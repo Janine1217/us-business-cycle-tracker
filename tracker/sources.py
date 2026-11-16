@@ -24,8 +24,16 @@ def _get(url: str, params: dict | None = None, tries: int = 3, timeout: int = 60
             if r.status_code == 429:  # FRED 限流：每分鐘 120 次
                 time.sleep(20)
                 continue
+            if 400 <= r.status_code < 500:  # 參數或金鑰錯誤：重試也沒用，直接回報 FRED 的說明
+                try:
+                    detail = r.json().get("error_message", "")
+                except ValueError:
+                    detail = r.text[:200]
+                raise SourceError(f"HTTP {r.status_code}：{detail or r.reason}")
             r.raise_for_status()
             return r
+        except SourceError:
+            raise
         except requests.RequestException as e:
             last = e
             time.sleep(2 * (i + 1))

@@ -15,7 +15,7 @@ def run_fetch(only: list[str] | None = None) -> dict:
     cfg = load_config()
     st = cfg["settings"]
     start = st["observation_start"]
-    api_key = env("FRED_API_KEY")
+    api_key = (env("FRED_API_KEY") or "").strip().strip("\"'").strip()  # 容忍貼上時多出的空白、換行、引號
     status = store.load_status()
     now = stamp(cfg)
 
@@ -37,9 +37,15 @@ def run_fetch(only: list[str] | None = None) -> dict:
 
     # FRED
     fred_ids = [k for k, v in series_cfg.items() if v["source"] == "fred"]
-    if fred_ids and not api_key:
+    key_problem = None
+    if not api_key:
+        key_problem = "沒有設定 FRED_API_KEY"
+    elif not (len(api_key) == 32 and api_key.isalnum() and api_key == api_key.lower()):
+        key_problem = f"FRED_API_KEY 格式不對（應為 32 個小寫英數字，目前長度 {len(api_key)}）"
+    if fred_ids and key_problem:
+        print("✗", key_problem)
         for sid in fred_ids:
-            fail(sid, "沒有設定 FRED_API_KEY")
+            fail(sid, key_problem)
     else:
         for sid in fred_ids:
             try:
