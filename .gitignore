@@ -1,0 +1,11 @@
+# 金鑰與密碼：絕對不可上傳
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# 暫存
+cache/
+*.log

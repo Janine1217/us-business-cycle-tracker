@@ -1,0 +1,137 @@
+# 美國景氣循環追蹤系統：設定檔
+# 修改這個檔案就能調整指標、參數與規則，不需要改程式碼。
+# 「kind」決定變化幅度的單位：rate＝百分比類（百分點 pp）、level＝數值類（%）、index＝指數類（點數）
+
+settings:
+  observation_start: "1975-01-01"   # 抓資料起點（比回測早 10 年，供 24 個月回看與年增率計算）
+  backtest_start: "1985-01-01"      # 回測與繪圖起點
+  utc_offset_hours: 8               # 台灣時間
+  run_time: "08:00"                 # 每日執行時間（台灣時間），實際排程寫在 .github/workflows/daily.yml
+  failure_alert_after_runs: 2       # 整個排程連續失敗幾次就寄系統異常通知
+  run_failure_ratio: 0.5            # 單次執行有超過這個比例的序列抓取失敗，視為「整個排程失敗」
+  shiller:
+    page: "https://shillerdata.com/"                                   # 先從這頁找最新檔案連結
+    fallback_url: "http://www.econ.yale.edu/~shiller/data/ie_data.xls"  # 備援（2023-09 後未更新）
+
+# ── 原始序列（抓取單位）──────────────────────────────────────────
+# source: fred（FRED API）或 shiller（席勒資料）
+# freq: D 日、W 週、M 月、Q 季
+series:
+  # #1 聯邦基金利率
+  DFEDTARU:  {source: fred, name: 聯邦基金目標區間上限, freq: D, unit: "%", kind: rate}
+  DFEDTARL:  {source: fred, name: 聯邦基金目標區間下限, freq: D, unit: "%", kind: rate}
+  DFEDTAR:   {source: fred, name: 聯邦基金目標利率（2008 年以前）, freq: D, unit: "%", kind: rate}
+  DFF:       {source: fred, name: 聯邦基金有效利率, freq: D, unit: "%", kind: rate}
+  # #2、#3
+  DGS10:        {source: fred, name: 10 年期公債殖利率, freq: D, unit: "%", kind: rate}
+  MORTGAGE30US: {source: fred, name: 30 年房貸平均利率, freq: W, unit: "%", kind: rate}
+  # #4a、#4b
+  DCOILWTICO:    {source: fred, name: WTI 原油（日）, freq: D, unit: 美元/桶, kind: level}
+  WTISPLC:       {source: fred, name: WTI 原油（月）, freq: M, unit: 美元/桶, kind: level}
+  PPIACO:        {source: fred, name: PPI 全部商品, freq: M, unit: 指數 1982=100, kind: level}
+  PALLFNFINDEXM: {source: fred, name: IMF 全球原物料價格指數, freq: M, unit: 指數 2016=100, kind: level}
+  # #5、#6
+  ICSA:    {source: fred, name: 初領失業救濟金人數, freq: W, unit: 人, kind: level}
+  IC4WSA:  {source: fred, name: 初領失業救濟金人數（4 週平均）, freq: W, unit: 人, kind: level}
+  UEMPLT5: {source: fred, name: 短期失業人數（< 5 週）, freq: M, unit: 千人, kind: level}
+  # #7、#14
+  RRSFS:           {source: fred, name: 實質零售及餐飲銷售, freq: M, unit: 百萬美元（1982-84 幣值）, kind: level}
+  DGDSRA3M086SBEA: {source: fred, name: 實質個人消費支出－商品（數量指數，#7 的 1985–1991 代理）, freq: M, unit: 指數 2017=100, kind: level}
+  DPCERA3M086SBEA: {source: fred, name: 實質個人消費支出（數量指數）, freq: M, unit: 指數 2017=100, kind: level}
+  DSPIC96:         {source: fred, name: 實質可支配所得, freq: M, unit: 十億美元（2017 連鎖）, kind: level}
+  PCECC96:         {source: fred, name: 實質個人消費支出（季）, freq: Q, unit: 十億美元（2017 連鎖）, kind: level}
+  # #8、#12
+  PNFI:   {source: fred, name: 私人非住宅固定投資, freq: Q, unit: 十億美元, kind: level}
+  PNFIC1: {source: fred, name: 實質私人非住宅固定投資（2007 年起）, freq: Q, unit: 十億美元（2017 連鎖）, kind: level}
+  PRFI:   {source: fred, name: 私人住宅固定投資, freq: Q, unit: 十億美元, kind: level}
+  # #9、#16
+  DGORDER: {source: fred, name: 耐久財新訂單, freq: M, unit: 百萬美元, kind: level}
+  ADXTNO:  {source: fred, name: 耐久財新訂單（不含運輸）, freq: M, unit: 百萬美元, kind: level}
+  # #10
+  BOPTIMP: {source: fred, name: 進口金額（月）, freq: M, unit: 百萬美元, kind: level}
+  IMPGS:   {source: fred, name: 進口金額（季，1985–1991 補畫）, freq: Q, unit: 十億美元, kind: level}
+  # #11、#13
+  PCE:      {source: fred, name: 個人消費支出（名目）, freq: M, unit: 十億美元, kind: level}
+  DSPI:     {source: fred, name: 個人可支配所得（名目）, freq: M, unit: 十億美元, kind: level}
+  CPILFESL: {source: fred, name: 核心 CPI, freq: M, unit: 指數 1982-84=100, kind: level}
+  # #15
+  UMCSENT: {source: fred, name: 密西根大學消費者信心指數, freq: M, unit: 指數 1966Q1=100, kind: index}
+  # #17、#18
+  SLEXPND:         {source: fred, name: 州和地方政府當期支出, freq: Q, unit: 十億美元, kind: level}
+  FGRECPT:         {source: fred, name: 聯邦政府當期收入, freq: Q, unit: 十億美元, kind: level}
+  W023RC1Q027SBEA: {source: fred, name: 州和地方政府當期收入, freq: Q, unit: 十億美元, kind: level}
+  # #19
+  DRCLACBS: {source: fred, name: 消費性貸款違約率, freq: Q, unit: "%", kind: rate}
+  DRBLACBS: {source: fred, name: 企業貸款違約率, freq: Q, unit: "%", kind: rate}
+  # #20
+  GPDIC1:          {source: fred, name: 實質國內私人投資毛額, freq: Q, unit: 十億美元（2017 連鎖）, kind: level}
+  A007RA3Q086SBEA: {source: fred, name: 實質固定投資（數量指數，不含存貨）, freq: Q, unit: 指數 2017=100, kind: level}
+  # #21（PMI 代理）
+  GACDFSA066MSFRBPHI: {source: fred, name: 費城聯準銀行製造業調查－目前整體活動, freq: M, unit: 擴散指數, kind: index}
+  # #22、#23
+  JTSJOL:  {source: fred, name: 新開職缺數（JOLTS）, freq: M, unit: 千人, kind: level}
+  WALCL:   {source: fred, name: 聯準會總資產, freq: W, unit: 百萬美元, kind: level}
+  FGEXPND: {source: fred, name: 聯邦政府當期支出, freq: Q, unit: 十億美元, kind: level}
+  # #24
+  GDPC1:    {source: fred, name: 實質 GDP, freq: Q, unit: 十億美元（2017 連鎖）, kind: level}
+  CFNAIMA3: {source: fred, name: 芝加哥聯準銀行全國活動指數（3 個月平均）, freq: M, unit: 指數, kind: index}
+  # #25、#26
+  SHILLER_SP500: {source: shiller, field: P,    name: S&P 500（席勒月資料）, freq: M, unit: 指數, kind: level}
+  SHILLER_CAPE:  {source: shiller, field: CAPE, name: 席勒本益比（CAPE）, freq: M, unit: 倍, kind: index}
+  SP500:         {source: fred, name: S&P 500（日，近 10 年）, freq: D, unit: 指數, kind: level}
+  NASDAQCOM:     {source: fred, name: 那斯達克綜合指數, freq: D, unit: 指數, kind: level}
+  # #27–#29
+  VIXCLS:       {source: fred, name: VIX 恐慌指數, freq: D, unit: 指數, kind: index}
+  BAA10Y:       {source: fred, name: Baa 公司債與 10 年期公債利差, freq: D, unit: 百分點, kind: rate}
+  BAMLH0A0HYM2: {source: fred, name: ICE BofA 高收益債利差（近 3 年）, freq: D, unit: 百分點, kind: rate}
+  NFCIRISK:     {source: fred, name: 芝加哥聯準銀行金融情勢指數－風險分項, freq: W, unit: 指數, kind: index}
+  NFCI:         {source: fred, name: 芝加哥聯準銀行金融情勢指數, freq: W, unit: 指數, kind: index}
+  # 衰退期間陰影
+  USREC: {source: fred, name: NBER 衰退期間, freq: M, unit: 0/1, kind: index}
+
+# ── 儀表板指標（對應需求文件第 4 節 #1–#29）────────────────────────
+# stages：所屬階段（recovery 復甦、growth 成長、boom 榮景、recession 衰退）
+indicators:
+  - {id: "1",  name: 聯邦基金利率, series: [DFEDTARU, DFEDTARL, DFEDTAR, DFF], stages: [recovery]}
+  - {id: "2",  name: 10 年期公債殖利率, series: [DGS10], stages: [recovery]}
+  - {id: "3",  name: 30 年房貸平均利率, series: [MORTGAGE30US], stages: [recovery]}
+  - {id: "4a", name: 油價（WTI）, series: [DCOILWTICO, WTISPLC], stages: [recovery, boom]}
+  - {id: "4b", name: 原物料價格, series: [PPIACO, PALLFNFINDEXM], stages: [recovery]}
+  - {id: "5",  name: 初領失業救濟金人數, series: [IC4WSA, ICSA, JTSJOL], stages: [recovery, growth, boom]}
+  - {id: "6",  name: 短期失業人數（< 5 週）, series: [UEMPLT5], stages: [recovery]}
+  - {id: "7",  name: 實質零售銷售年增率, series: [RRSFS, DGDSRA3M086SBEA], stages: [recovery, boom, recession],
+     note: "1992 年以前以實質個人消費支出－商品（DGDSRA3M086SBEA）代理"}
+  - {id: "8",  name: 私人非住宅固定投資年增率, series: [PNFI, PNFIC1], stages: [recovery]}
+  - {id: "9",  name: 耐久財新訂單年增率, series: [DGORDER], stages: [recovery], note: "本資料自 1992 年起提供"}
+  - {id: "10", name: 進口金額年增率, series: [BOPTIMP, IMPGS], stages: [recovery], note: "1992 年以前以季資料 IMPGS 補畫"}
+  - {id: "11", name: 個人消費支出 vs 可支配所得年增率, series: [PCE, DSPI], stages: [growth]}
+  - {id: "12", name: 非住宅 vs 住宅固定投資年增率, series: [PNFI, PRFI], stages: [growth]}
+  - {id: "13", name: 核心 CPI 年增率, series: [CPILFESL], stages: [growth]}
+  - {id: "14", name: 實質消費、實質可支配所得、實質零售銷售年增率, series: [DPCERA3M086SBEA, DSPIC96, RRSFS, PCECC96], stages: [boom, recession]}
+  - {id: "15", name: 密西根大學消費者信心指數, series: [UMCSENT], stages: [boom],
+     note: "經濟諮商局指數需付費、OECD 代理已停更或與密西根指數重複，目前只用密西根指數"}
+  - {id: "16", name: 耐久財訂單（不含運輸）, series: [ADXTNO], stages: [boom], note: "本資料自 1992 年起提供"}
+  - {id: "17", name: 州和地方政府支出年增率, series: [SLEXPND], stages: [boom]}
+  - {id: "18", name: 聯邦與州地方政府收入年增率, series: [FGRECPT, W023RC1Q027SBEA], stages: [boom]}
+  - {id: "19", name: 消費性與企業貸款違約率, series: [DRCLACBS, DRBLACBS], stages: [boom], note: "本資料自 1987 年起提供"}
+  - {id: "20", name: 實質民間投資, series: [GPDIC1, A007RA3Q086SBEA], stages: [recession]}
+  - {id: "21", name: 製造業景氣（PMI 代理）, series: [GACDFSA066MSFRBPHI], stages: [recession],
+     note: "ISM PMI 不在 FRED，以費城聯準銀行製造業調查代理（0 為榮枯線）"}
+  - {id: "22", name: 新開職缺數, series: [JTSJOL], stages: [boom], note: "本資料自 2000 年起提供"}
+  - {id: "23", name: 刺激措施輔助數據, series: [WALCL, FGEXPND], stages: [recovery]}
+  - {id: "24", name: 實質 GDP 與 CFNAI, series: [GDPC1, CFNAIMA3], stages: [boom]}
+  - {id: "25", name: S&P 500, series: [SHILLER_SP500, SP500, NASDAQCOM], stages: [boom]}
+  - {id: "26", name: 席勒本益比（CAPE）, series: [SHILLER_CAPE], stages: [boom]}
+  - {id: "27", name: VIX 恐慌指數, series: [VIXCLS], stages: [boom], note: "本資料自 1990 年起提供"}
+  - {id: "28", name: Baa 公司債利差, series: [BAA10Y, BAMLH0A0HYM2], stages: [boom], note: "本資料自 1986 年起提供"}
+  - {id: "29", name: 金融情勢指數－風險分項, series: [NFCIRISK, NFCI], stages: [boom]}
+
+# ── 政府刺激措施登記（復甦期依據 9）──────────────────────────────
+# 新增一筆：照下面格式加一行，date 用 YYYY-MM-DD（法案簽署日）
+# 預設範例的金額為法案通過時的概略規模（依美國國會預算處 CBO 估計，由 Claude 依記憶填入，請自行核對）
+stimulus:
+  - {date: "2008-02-13", name: 2008 年經濟刺激法案, detail: 退稅支票約 1,520 億美元}
+  - {date: "2009-02-17", name: 美國復甦與再投資法案（ARRA）, detail: 約 7,870 億美元}
+  - {date: "2020-03-27", name: CARES 法案, detail: 約 2.2 兆美元}
+  - {date: "2020-12-27", name: 2021 年綜合撥款法案（含紓困）, detail: 約 9,000 億美元紓困}
+  - {date: "2021-03-11", name: 美國救援計畫法案（ARP）, detail: 約 1.9 兆美元}

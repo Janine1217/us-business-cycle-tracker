@@ -1,0 +1,5 @@
+# 全部是純 Python 套件（不需編譯，Windows 應用程式控制原則下也能執行）
+requests>=2.31
+ruamel.yaml>=0.18
+xlrd>=2.0
+python-dotenv>=1.0
