@@ -6,6 +6,9 @@ __pycache__/
 *.pyc
 .venv/
 
+# 產生出來的網頁（由 GitHub Actions 每天重新產生並部署）
+site/
+
 # 暫存
 cache/
 *.log

@@ -13,6 +13,11 @@ settings:
     page: "https://shillerdata.com/"                                   # 先從這頁找最新檔案連結
     fallback_url: "http://www.econ.yale.edu/~shiller/data/ie_data.xls"  # 備援（2023-09 後未更新）
 
+# ── 判斷參數（階段 3 會補齊所有門檻）────────────────────────────
+params:
+  core_cpi_band: [1.8, 3.0]       # 成長期依據 4：核心 CPI 年增率區間（%）
+  investment_growth_min: 5        # 成長期依據 3：投資年增率門檻（%）
+
 # ── 原始序列（抓取單位）──────────────────────────────────────────
 # source: fred（FRED API）或 shiller（席勒資料）
 # freq: D 日、W 週、M 月、Q 季

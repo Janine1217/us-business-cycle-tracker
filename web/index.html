@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>美國景氣儀表板</title>
+<meta name="description" content="美國景氣循環追蹤：指標總表、趨勢圖與景氣階段判斷，每日更新。">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="景氣儀表板">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>美國景氣循環儀表板</h1>
+    <p class="meta" id="meta">載入中…</p>
+  </div>
+  <nav class="tabs wrap" role="tablist">
+    <button role="tab" data-tab="overview" aria-selected="true">總覽</button>
+    <button role="tab" data-tab="table" aria-selected="false">指標總表</button>
+    <button role="tab" data-tab="charts" aria-selected="false">趨勢圖</button>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section id="overview" class="panel">
+    <div class="card stage-card">
+      <div class="stage-label">目前景氣階段</div>
+      <div class="stage-value pending">判定功能開發中</div>
+      <p class="muted">景氣階段判定、轉折訊號與投資方向，會在下一個開發階段（趨勢判斷與階段判定）加入。目前可先查看指標總表與趨勢圖。</p>
+      <svg class="cycle" viewBox="0 0 320 200" role="img" aria-label="景氣循環：復甦期、成長期、榮景期、衰退期">
+        <path d="M20 150 C 70 150, 80 40, 160 40 S 250 150, 300 150" fill="none" class="cycle-line"/>
+        <g class="cycle-pt"><circle cx="62" cy="118" r="6"/><text x="62" y="176">復甦期</text></g>
+        <g class="cycle-pt"><circle cx="112" cy="62" r="6"/><text x="104" y="28">成長期</text></g>
+        <g class="cycle-pt"><circle cx="190" cy="46" r="6"/><text x="200" y="22">榮景期</text></g>
+        <g class="cycle-pt"><circle cx="262" cy="120" r="6"/><text x="262" y="176">衰退期</text></g>
+      </svg>
+    </div>
+    <div class="card">
+      <h2>資料狀態</h2>
+      <div id="health"></div>
+    </div>
+    <p class="disclaimer">僅供參考，非投資建議。投資方向為使用者個人整理的觀點。</p>
+  </section>
+
+  <section id="table" class="panel" hidden>
+    <div class="chips" id="stage-filter" role="group" aria-label="依所屬階段篩選"></div>
+    <div id="indicator-list" class="ind-list"></div>
+  </section>
+
+  <section id="charts" class="panel" hidden>
+    <div class="chips" id="chart-filter" role="group" aria-label="依所屬階段篩選"></div>
+    <div id="chart-list"></div>
+  </section>
+</main>
+
+<footer class="wrap foot">
+  資料來源：FRED（聖路易聯邦準備銀行）、Robert Shiller 美股資料。灰色陰影為 NBER 認定的衰退期間（FRED：<a href="https://fred.stlouisfed.org/series/USREC" target="_blank" rel="noopener">USREC</a>）。
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2.35.2/plotly.min.js"></script>
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

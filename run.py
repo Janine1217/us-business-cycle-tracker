@@ -2,6 +2,7 @@
 
   python run.py verify   用 FRED API 查證所有代碼，輸出 docs/series_metadata.md
   python run.py fetch    抓取所有序列，更新 data/series/*.csv 與 data/status.json
+  python run.py build    產生儀表板 site/index.html（可直接用瀏覽器開啟）
 """
 from __future__ import annotations
 
@@ -47,8 +48,14 @@ def cmd_fetch() -> None:
         sys.exit(1)
 
 
+def cmd_build() -> None:
+    from tracker.build import run_build
+    res = run_build()
+    print(f"儀表板已產生：site/index.html（{res['charts']} 張圖，資料 {res['size_kb']} KB）")
+
+
 if __name__ == "__main__":
-    commands = {"verify": cmd_verify, "fetch": cmd_fetch}
+    commands = {"verify": cmd_verify, "fetch": cmd_fetch, "build": cmd_build}
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
         print(__doc__)
         sys.exit(2)
