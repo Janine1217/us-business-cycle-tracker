@@ -5,6 +5,7 @@
 - 儀表板網址：https://janine1217.github.io/us-business-cycle-tracker/
 - 需求文件：`Intelligence/05. 美國景氣追蹤/us_business_cycle_tracker_prompt.md`
 - 資料查證報告：[docs/資料查證報告.md](docs/資料查證報告.md)
+- 回測報告：[docs/回測報告.md](docs/回測報告.md)
 
 > 僅供參考，非投資建議。
 
@@ -14,9 +15,9 @@
 |---|---|---|
 | 1 | 資料查證、抓取、歷史資料庫 | ✅ 完成 |
 | 2 | 儀表板（指標總表＋趨勢圖）、每日自動更新 | ✅ 完成 |
-| 3 | 趨勢判斷（T1–T7）、特殊型態、階段判定、轉折訊號 | 未開始 |
+| 3 | 趨勢判斷（T1–T7）、特殊型態、階段判定、轉折訊號 | ✅ 完成（規則待第 5 階段回測調整） |
 | 4 | Email 提醒、系統異常通知 | 未開始 |
-| 5 | 回測與參數調整 | 未開始 |
+| 5 | 回測與參數調整 | ✅ 完成（報告：[docs/回測報告.md](docs/回測報告.md)，每日自動更新） |
 
 ## 第一次設定（只需做一次）
 
@@ -68,6 +69,7 @@ python run.py build    # 產生 site/index.html
 | `config.yaml` | 指標、參數、門檻、刺激措施登記 |
 | `data/series/` | 每個指標的歷史資料（CSV，可用 Excel 開啟） |
 | `data/status.json` | 每個指標最後成功更新的時間、錯誤紀錄 |
+| `data/signal_state.json`、`data/signal_log.csv` | 每日執行時的景氣階段與轉折訊號紀錄（只有雲端執行會寫入） |
 | `tracker/` | 程式 |
 | `web/` | 儀表板版面 |
-| `docs/` | 查證報告、回測報告 |
+| `docs/` | 查證報告、回測報告（回測報告每天隨資料自動更新） |

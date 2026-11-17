@@ -24,28 +24,53 @@
     <button role="tab" data-tab="overview" aria-selected="true">總覽</button>
     <button role="tab" data-tab="table" aria-selected="false">指標總表</button>
     <button role="tab" data-tab="charts" aria-selected="false">趨勢圖</button>
+    <button role="tab" data-tab="backtest" aria-selected="false">回測</button>
   </nav>
 </header>
 
 <main class="wrap">
   <section id="overview" class="panel">
     <div class="card stage-card">
-      <div class="stage-label">目前景氣階段</div>
-      <div class="stage-value pending">判定功能開發中</div>
-      <p class="muted">景氣階段判定、轉折訊號與投資方向，會在下一個開發階段（趨勢判斷與階段判定）加入。目前可先查看指標總表與趨勢圖。</p>
-      <svg class="cycle" viewBox="0 0 320 200" role="img" aria-label="景氣循環：復甦期、成長期、榮景期、衰退期">
-        <path d="M20 150 C 70 150, 80 40, 160 40 S 250 150, 300 150" fill="none" class="cycle-line"/>
-        <g class="cycle-pt"><circle cx="62" cy="118" r="6"/><text x="62" y="176">復甦期</text></g>
-        <g class="cycle-pt"><circle cx="112" cy="62" r="6"/><text x="104" y="28">成長期</text></g>
-        <g class="cycle-pt"><circle cx="190" cy="46" r="6"/><text x="200" y="22">榮景期</text></g>
-        <g class="cycle-pt"><circle cx="262" cy="120" r="6"/><text x="262" y="176">衰退期</text></g>
-      </svg>
+      <div class="stage-grid">
+        <div>
+          <div class="stage-label">目前景氣階段</div>
+          <div class="stage-value" id="stage-name">—</div>
+          <p class="stage-reason" id="stage-reason"></p>
+          <p class="muted small" id="stage-since"></p>
+        </div>
+        <svg class="cycle" viewBox="0 0 320 200" role="img" aria-label="景氣循環位置圖">
+          <path d="M20 150 C 70 150, 80 40, 160 40 S 250 150, 300 150" fill="none" class="cycle-line"/>
+          <g class="cycle-pt" data-stage="recovery"><circle cx="62" cy="118" r="7"/><text x="62" y="176">復甦期</text></g>
+          <g class="cycle-pt" data-stage="growth"><circle cx="112" cy="62" r="7"/><text x="104" y="28">成長期</text></g>
+          <g class="cycle-pt" data-stage="boom"><circle cx="190" cy="46" r="7"/><text x="200" y="22">榮景期</text></g>
+          <g class="cycle-pt" data-stage="recession"><circle cx="262" cy="120" r="7"/><text x="262" y="176">衰退期</text></g>
+        </svg>
+      </div>
+    </div>
+    <div class="card" id="caveat-card" hidden></div>
+    <div class="card">
+      <h2>轉折訊號</h2>
+      <div id="signals"></div>
+    </div>
+    <div class="card">
+      <h2>各階段判斷依據</h2>
+      <p class="muted small">點開可看逐項明細與數值。✓ 成立｜△ 接近｜✕ 未成立｜— 資料缺漏（從分母扣除）</p>
+      <div id="groups"></div>
+    </div>
+    <div class="card">
+      <h2 id="invest-title">投資方向</h2>
+      <div id="invest"></div>
+      <p class="disclaimer-inline">僅供參考，非投資建議。投資方向為使用者個人整理的觀點。</p>
+    </div>
+    <div class="card">
+      <h2>階段時間軸（系統判定 vs NBER 衰退期間）</h2>
+      <div id="timeline"></div>
+      <details class="events"><summary>階段轉換與訊號歷史</summary><div id="events"></div></details>
     </div>
     <div class="card">
       <h2>資料狀態</h2>
       <div id="health"></div>
     </div>
-    <p class="disclaimer">僅供參考，非投資建議。投資方向為使用者個人整理的觀點。</p>
   </section>
 
   <section id="table" class="panel" hidden>
@@ -55,8 +80,10 @@
 
   <section id="charts" class="panel" hidden>
     <div class="chips" id="chart-filter" role="group" aria-label="依所屬階段篩選"></div>
+    <div class="stage-legend" id="stage-legend"></div>
     <div id="chart-list"></div>
   </section>
+  <section id="backtest" class="panel" hidden></section>
 </main>
 
 <footer class="wrap foot">

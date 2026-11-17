@@ -49,9 +49,17 @@ def cmd_fetch() -> None:
 
 
 def cmd_build() -> None:
+    import os
+
     from tracker.build import run_build
-    res = run_build()
+    # 只有雲端每日執行才寫入訊號紀錄（data/signal_log.csv），本機測試不影響紀錄
+    res = run_build(record=bool(os.environ.get("GITHUB_ACTIONS")))
     print(f"儀表板已產生：site/index.html（{res['charts']} 張圖，資料 {res['size_kb']} KB）")
+    print(f"目前景氣階段：{res['stage']}")
+    for s in res["signals"]:
+        print(f"  {s}")
+    for c in res["changes"]:
+        print(f"  訊號變化：{c['name']} {c['from'] or '無'} → {c['to'] or '解除'}")
 
 
 if __name__ == "__main__":

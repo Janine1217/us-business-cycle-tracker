@@ -9,7 +9,10 @@ import shutil
 
 from . import store
 from .charts import build_charts
+from .criteria import indicator_trends
 from .settings import ROOT, load_config, stamp
+from .backtest import run_backtest, write_report
+from .stage import record_live, run_stage
 
 SITE = ROOT / "site"
 TEMPLATE = ROOT / "web"
@@ -49,11 +52,31 @@ def _source_info(sid: str, cfg: dict, status: dict) -> dict:
             "last_obs": st.get("last_obs_date")}
 
 
-def run_build() -> dict:
+def run_build(record: bool = True) -> dict:
     cfg = load_config()
     status = store.load_status()
     start = cfg["settings"]["backtest_start"]
     indicators = {i["id"]: i for i in cfg["indicators"]}
+    now = stamp(cfg)
+
+    # 階段判定與訊號
+    st = run_stage(cfg, now[:10])
+    bt = run_backtest(cfg, now[:10], st)
+    write_report(bt, cfg, now, st["timeline"])
+    crits = st.pop("_crits")
+    st.pop("_extra")
+    changes = record_live(st, now) if record else []
+    trends = indicator_trends(cfg)
+    ind_state: dict[str, str] = {}
+    for c in crits:
+        met, near, _ = c.at(st["asof"])
+        for iid in c.indicators:
+            cur = ind_state.get(iid)
+            if met:
+                ind_state[iid] = "met"
+            elif near and cur != "met":
+                ind_state[iid] = "near"
+    stage_zh_timeline = [[a, b, STAGE_ZH[s]] for a, b, s in st["timeline"]]
 
     charts_out, table = [], []
     for ch in build_charts(cfg):
@@ -76,7 +99,17 @@ def run_build() -> dict:
                 traces.append({"name": t["name"], "unit": t["unit"], "axis": t["axis"], "dash": t["dash"],
                                "x": [d for d, _ in data], "y": [_round(y) for _, y in data]})
             views.append({k: v[k] for k in ("name", "y_title", "y2_title", "hlines", "vlines", "log_ok")}
-                         | {"traces": traces})
+                         | {"traces": traces, "marks": []})
+        # 特殊型態標註（畫在第一個檢視）
+        if views and views[0]["traces"] and st["marks"].get(ch["id"]):
+            t0 = views[0]["traces"][0]
+            lookup = dict(zip(t0["x"], t0["y"]))
+            for mk in st["marks"][ch["id"]]:
+                y = mk.get("y")
+                if y is None:
+                    y = lookup.get(mk["x"])
+                if y is not None and mk["x"] >= start:
+                    views[0]["marks"].append({"x": mk["x"], "y": _round(y), "text": mk["text"]})
         stages = [STAGE_ZH[s] for s in ind.get("stages", [])]
         charts_out.append({"id": ch["id"], "title": ch["title"], "stages": stages,
                            "sources": sources, "notes": notes, "views": views})
@@ -96,13 +129,16 @@ def run_build() -> dict:
                           "prev": _round(prev[1]) if prev else None, "prev_date": prev[0] if prev else None,
                           "chg": _round(chg) if chg is not None else None,
                           "chg_unit": {"pp": "百分點", "pt": "點", "pct": "%"}[head["chg"]],
-                          "failed": [{"id": s["id"], "last_success": s["last_success"]} for s in failed]})
+                          "failed": [{"id": s["id"], "last_success": s["last_success"]} for s in failed],
+                          "trend": trends.get(ch["id"]), "state": ind_state.get(ch["id"])})
 
     payload = {
-        "generated": stamp(cfg), "last_run": status.get("last_run"),
+        "generated": now, "last_run": status.get("last_run"),
         "start": start, "recessions": _recessions(start),
         "charts": charts_out, "table": table,
         "stimulus": cfg.get("stimulus", []),
+        "stage": st | {"timeline": stage_zh_timeline},
+        "backtest": {k: bt[k] for k in ("turns", "current", "spec", "criteria")},
     }
     SITE.mkdir(exist_ok=True)
     for f in TEMPLATE.iterdir():
@@ -110,4 +146,6 @@ def run_build() -> dict:
             shutil.copy2(f, SITE / f.name)
     (SITE / "data.js").write_text("window.DASHBOARD = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
                                   encoding="utf-8")
-    return {"charts": len(charts_out), "size_kb": (SITE / "data.js").stat().st_size // 1024}
+    return {"charts": len(charts_out), "size_kb": (SITE / "data.js").stat().st_size // 1024,
+            "stage": st["stage"]["name"], "signals": [f"{s['level_zh']} {s['name']}" for s in st["signals"]],
+            "changes": changes}
