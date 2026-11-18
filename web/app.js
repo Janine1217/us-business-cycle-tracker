@@ -5,7 +5,7 @@
   const $ = (s, el) => (el || document).querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
-  const STAGES = ["全部", "復甦期", "成長期", "榮景期", "衰退期"];
+  const STAGES = ["全部", "復甦期", "成長期", "榮景期", "衰退期", "額外參考"];
   const store = {
     get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
     set(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 無痕模式等 */ } },

@@ -61,6 +61,9 @@ params:
   invest_drop_pp: 5               # 或年增率 < 0 且過去 2 季內下降 ≥ 5 個百分點
   # 百分位（T7）：回測時只用當時以前的資料；1985 年初樣本太少，至少回看 10 年
   pctile_min_years: 10
+  # 巴菲特指標（#30，額外參考，不影響階段判定）
+  buffett_high: 133              # 高於此值：買股相對風險高
+  buffett_safe: [70, 80]         # 落在此區間以下：相對安全
 
 # ── 通用趨勢判斷 T1–T7（需求文件第 5 節）────────────────────────
 # 季資料把「月」改成「季」（依需求文件字面：6 季、24 季、12 季），且不取 3 期平均
@@ -210,6 +213,9 @@ series:
   BAMLH0A0HYM2: {source: fred, name: ICE BofA 高收益債利差（近 3 年）, freq: D, unit: 百分點, kind: rate}
   NFCIRISK:     {source: fred, name: 芝加哥聯準銀行金融情勢指數－風險分項, freq: W, unit: 指數, kind: index}
   NFCI:         {source: fred, name: 芝加哥聯準銀行金融情勢指數, freq: W, unit: 指數, kind: index}
+  # #30 巴菲特指標（額外參考）
+  NCBEILQ027S: {source: fred, name: 非金融企業股票市值（Fed Z.1，季末）, freq: Q, unit: 百萬美元, kind: level}
+  GNP:         {source: fred, name: 國民生產毛額（GNP，年率）, freq: Q, unit: 十億美元, kind: level}
   # 衰退期間陰影
   USREC: {source: fred, name: NBER 衰退期間, freq: M, unit: 0/1, kind: index}
 
@@ -249,6 +255,8 @@ indicators:
   - {id: "27", name: VIX 恐慌指數, series: [VIXCLS], stages: [boom], note: "本資料自 1990 年起提供"}
   - {id: "28", name: Baa 公司債利差, series: [BAA10Y, BAMLH0A0HYM2], stages: [boom], note: "本資料自 1986 年起提供"}
   - {id: "29", name: 金融情勢指數－風險分項, series: [NFCIRISK, NFCI], stages: [boom]}
+  # ref: true＝額外參考，不納入階段判定
+  - {id: "30", name: 巴菲特指標（股市總市值／GNP）, series: [NCBEILQ027S, GNP, SP500], stages: [], ref: true}
 
 # ── 政府刺激措施登記（復甦期依據 9）──────────────────────────────
 # 新增一筆：照下面格式加一行，date 用 YYYY-MM-DD（法案簽署日）

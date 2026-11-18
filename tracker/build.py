@@ -92,7 +92,7 @@ def run_build(record: bool = True) -> dict:
                 data = [(d, y) for d, y in t["data"] if d >= start]
                 if not data:
                     continue
-                if data[0][0] > f"{start[:4]}-12-31":
+                if data[0][0] > f"{start[:4]}-12-31" and "估計" not in t["name"]:
                     msg = f"{t['name']}：本資料自 {data[0][0][:4]} 年起提供"
                     if msg not in notes:
                         notes.append(msg)
@@ -110,7 +110,7 @@ def run_build(record: bool = True) -> dict:
                     y = lookup.get(mk["x"])
                 if y is not None and mk["x"] >= start:
                     views[0]["marks"].append({"x": mk["x"], "y": _round(y), "text": mk["text"]})
-        stages = [STAGE_ZH[s] for s in ind.get("stages", [])]
+        stages = [STAGE_ZH[s] for s in ind.get("stages", [])] + (["額外參考"] if ind.get("ref") else [])
         charts_out.append({"id": ch["id"], "title": ch["title"], "stages": stages,
                            "sources": sources, "notes": notes, "views": views})
 

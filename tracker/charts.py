@@ -34,6 +34,32 @@ def V(name, traces, y_title="", y2_title="", hlines=None, log_ok=False, vlines=N
             "hlines": hlines or [], "log_ok": log_ok, "vlines": vlines or []}
 
 
+def _qend(d: str) -> str:
+    """FRED 季資料以季初標日期（2026-04-01＝第 2 季），改標成季末月（2026-06-01）。"""
+    y, m = int(d[:4]), int(d[5:7]) + 2
+    return f"{y:04d}-{m:02d}-01"
+
+
+def buffett() -> tuple[list, list]:
+    """巴菲特指標＝股市總市值／GNP × 100。
+
+    市值：Fed 金融帳戶 Z.1 非金融企業股票市值（NCBEILQ027S，季末，百萬美元）。
+    GNP：國民生產毛額（年率，十億美元）。兩者同一季相除，標在季末月。
+    估計值：最新一季之後，以 S&P 500 月底收盤相對季末的漲跌幅外推市值（GNP 沿用最新一季）。
+    """
+    gnp = dict(S("GNP"))
+    official = [(_qend(d), v / 1000 / gnp[d] * 100) for d, v in S("NCBEILQ027S") if gnp.get(d)]
+    if not official:
+        return [], []
+    last_d, last_v = official[-1]
+    q_end_day = last_d[:8] + "31"
+    base = [v for d, v in S("SP500") if d <= q_end_day]
+    if not base:
+        return official, []
+    est = [(last_d, last_v)] + [(d, last_v * v / base[-1]) for d, v in M("SP500", "last") if d > last_d]
+    return official, est if len(est) > 1 else []
+
+
 def build_charts(cfg: dict) -> list[dict]:
     p = cfg.get("params", {})
     core_lo, core_hi = p.get("core_cpi_band", [1.8, 3.0])
@@ -49,6 +75,19 @@ def build_charts(cfg: dict) -> list[dict]:
     imp_m = ma3(yoy(S("BOPTIMP")))
     imp_q = tf.before(yoy(S("IMPGS")), imp_m[0][0] if imp_m else "9999")
     cape = S("SHILLER_CAPE")
+    bf, bf_est = buffett()
+    bf_hi, (bf_lo1, bf_lo2) = p.get("buffett_high", 133), p.get("buffett_safe", [70, 80])
+    def zone(v):  # noqa: E306
+        return "高於風險線" if v > bf_hi else "相對安全區" if v <= bf_lo2 else "介於兩者之間"
+    bf_notes = ["額外參考，不納入景氣階段判定",
+                f"判讀：> {bf_hi:g} 買股相對風險高；{bf_lo1:g}–{bf_lo2:g} 以下相對安全（門檻可在 config.yaml 的 buffett_high、buffett_safe 調整）",
+                "市值用 Fed 金融帳戶 Z.1 的非金融企業股票市值（NCBEILQ027S）代表股市總市值，"
+                "不含金融業與外國公司；不同資料來源算出的數值差異很大，門檻需搭配同一來源的歷史比較",
+                "季資料約在季末後 2–3 個月公布；虛線為依 S&P 500 漲跌外推的估計值，正式資料公布後會被取代"]
+    if bf:
+        bf_notes.insert(1, f"最新正式值 {bf[-1][1]:.0f}%（{bf[-1][0][:7]}，{zone(bf[-1][1])}）"
+                        + (f"；估計值 {bf_est[-1][1]:.0f}%（{bf_est[-1][0][:7]}，{zone(bf_est[-1][1])}）" if bf_est else "")
+                        + f"；1985 年以來中位數 {tf.percentile([v for d, v in tf.since(bf, '1985-01-01')], 50):.0f}%")
     cape_p80 = tf.percentile([v for d, v in tf.since(cape, cfg["settings"]["backtest_start"])], 80)
 
     charts = [
@@ -184,5 +223,11 @@ def build_charts(cfg: dict) -> list[dict]:
          "notes": ["數值愈低代表金融情勢愈寬鬆、風險意識愈低"],
          "views": [V("指數", [T("風險分項", M("NFCIRISK"), "點", "pt"),
                               T("總指數", M("NFCI"), "點", "pt", dash=True)], "指數", hlines=[{"y": 0}])]},
+        {"id": "30", "title": "巴菲特指標（股市總市值／GNP）", "sources": ["NCBEILQ027S", "GNP", "SP500"],
+         "notes": bf_notes,
+         "views": [V("比率", [T("巴菲特指標（正式值，季）", bf, "%", "pp"),
+                              T("估計值（依 S&P 500 外推）", bf_est, "%", "pp", dash=True)], "%（市值／GNP）",
+                     hlines=[{"y": bf_hi, "label": f"{bf_hi:g}% 風險線"},
+                             {"y": bf_lo2, "label": f"{bf_lo2:g}%"}, {"y": bf_lo1, "label": f"{bf_lo1:g}% 安全線"}])]},
     ]
     return charts

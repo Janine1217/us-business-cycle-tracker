@@ -11,7 +11,7 @@ from __future__ import annotations
 import bisect
 from dataclasses import dataclass, field
 
-from . import store
+from . import charts, store
 from . import transform as tf
 from . import trend as tr
 
@@ -597,6 +597,7 @@ def indicator_trends(cfg: dict) -> dict[str, dict]:
         "22": (S("JTSJOL"), "M", "pct"), "23": (M("WALCL", "last"), "M", "pct"), "24": (yoy(S("GDPC1")), "Q", "pp"),
         "25": (sp500, "M", "pct"), "26": (S("SHILLER_CAPE"), "M", "pt"), "27": (M("VIXCLS"), "M", "pt"),
         "28": (M("BAA10Y"), "M", "pp"), "29": (M("NFCIRISK"), "M", "pt"),
+        "30": (charts.buffett()[0], "Q", "pt"),
     }
     out = {}
     for iid, (rows, freq, kind) in spec.items():
