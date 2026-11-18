@@ -13,6 +13,7 @@ from .criteria import indicator_trends
 from .settings import ROOT, load_config, stamp
 from .backtest import run_backtest, write_report
 from .stage import record_live, run_stage
+from .todo import load_todo
 
 SITE = ROOT / "site"
 TEMPLATE = ROOT / "web"
@@ -139,6 +140,7 @@ def run_build(record: bool = True) -> dict:
         "stimulus": cfg.get("stimulus", []),
         "stage": st | {"timeline": stage_zh_timeline},
         "backtest": {k: bt[k] for k in ("turns", "current", "spec", "criteria")},
+        "todo": load_todo(),
     }
     SITE.mkdir(exist_ok=True)
     for f in TEMPLATE.iterdir():

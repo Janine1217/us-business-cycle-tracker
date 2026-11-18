@@ -192,3 +192,21 @@ main { padding-top: 16px; padding-bottom: 24px; }
 .tbl td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .lag-ok { color: var(--ink-2); } .lag-bad { color: var(--critical); }
 #backtest .tl { margin: 2px 0 8px; }
+
+/* 待調整事項 */
+.tab-count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 2px; border-radius: 999px; font-size: 11px; line-height: 18px; background: var(--border); color: var(--ink-2); }
+.todo-list { list-style: none; margin: 0; padding: 0; }
+.todo-item { padding: 10px 0; border-top: 1px solid var(--border); display: grid; gap: 3px; }
+.todo-item:first-child { border-top: 0; padding-top: 0; }
+.todo-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
+.todo-id { font-size: 12px; font-weight: 700; color: var(--ink-2); min-width: 22px; }
+.todo-title { flex: 1 1 200px; }
+.badge.todo-open { color: var(--ink-2); border-style: dashed; }
+.todo-item.done .todo-title { text-decoration: line-through; color: var(--ink-2); }
+.todo-item.done { opacity: .7; }
+.todo-item code, .card p code { font-size: 12px; padding: 0 4px; border-radius: 4px; background: var(--border); overflow-wrap: anywhere; }
+@media (max-width: 420px) {
+  .tabs { gap: 0; }
+  .tabs button { font-size: 14px; padding: 10px 1px; white-space: nowrap; }
+  .tab-count { min-width: 0; padding: 0 4px; margin-left: 1px; font-size: 10px; line-height: 15px; }
+}

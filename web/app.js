@@ -147,6 +147,28 @@
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>判斷依據</th><th>對照</th>${B.turns.map((t) => `<th>${esc(t.peak.slice(0, 4))}</th>`).join("")}<th>成立月數</th><th>窗口外比例</th></tr></thead><tbody>${crit}</tbody></table></div></div>`;
   }
 
+  // ── 待調整事項（docs/待調整事項.md）──────────────
+  const TD = D.todo;
+  if (TD) {
+    const md = (t) => esc(t).replace(/`([^`]+)`/g, "<code>$1</code>").replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    const src = "https://github.com/Janine1217/us-business-cycle-tracker/blob/main/docs/%E5%BE%85%E8%AA%BF%E6%95%B4%E4%BA%8B%E9%A0%85.md";
+    const tab = document.querySelector('[data-tab="todo"]');
+    if (tab && TD.open) tab.innerHTML = `待調整 <span class="tab-count">${TD.open}</span>`;
+    const item = (x) => `<li class="todo-item${x.done ? " done" : ""}">
+        <div class="todo-head"><span class="todo-id">${esc(x.id)}</span><strong class="todo-title">${md(x.title)}</strong>
+          <span class="badge ${x.done ? "ok" : "todo-open"}">${md(x.status)}</span></div>
+        ${x.now ? `<div class="small"><span class="muted">目前狀況：</span>${md(x.now)}</div>` : ""}
+        ${x.idea && !x.done ? `<div class="small"><span class="muted">可能方向（未驗證）：</span>${md(x.idea)}</div>` : ""}
+        ${x.config && x.config !== "—" ? `<div class="small muted">相關設定：${md(x.config)}</div>` : ""}
+      </li>`;
+    const log = TD.log.length ? `<div class="card"><h2>調整紀錄</h2><div class="tbl-wrap"><table class="tbl"><thead><tr>${Object.keys(TD.log[0]).map((k) => `<th>${esc(k)}</th>`).join("")}</tr></thead><tbody>${
+      TD.log.map((r) => `<tr>${Object.values(r).map((v) => `<td>${md(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>` : "";
+    $("#todo").innerHTML = `<div class="card"><h2>待調整事項</h2>
+        <p><strong>${TD.open}</strong> 項待處理｜<strong>${TD.done}</strong> 項已解決${TD.updated ? `<span class="small muted">（最後整理 ${esc(TD.updated)}）</span>` : ""}</p>
+        <p class="small muted">已知、但暫時找不到更好指標或依據的問題。內容來自 <a href="${src}" target="_blank" rel="noopener">docs/待調整事項.md</a>；解決後把該列「狀態」改成「✅ 已解決 日期」，這裡會自動劃線並移到最後。</p></div>` +
+      TD.sections.map((s) => `<div class="card"><h2>${esc(s.title)}</h2><ul class="todo-list">${s.items.map(item).join("")}</ul></div>`).join("") + log;
+  }
+
   // ── 總覽：資料狀態 ───────────────────────────
   const failedRows = D.table.filter((r) => r.failed.length);
   $("#health").innerHTML =

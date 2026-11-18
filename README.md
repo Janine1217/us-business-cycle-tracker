@@ -60,6 +60,7 @@
 
 - **不用做任何事**：每天 8:00 自動更新。
 - **手動更新一次**：GitHub 網頁 → **Actions** → 左側「每日更新儀表板」→ **Run workflow**。
+- **測試 Email 設定**：同上按 **Run workflow** 時，勾選「寄一封測試提醒信」再按綠色的 **Run workflow**。幾分鐘內收到主旨開頭為「[測試]」的信就代表設定正確；沒寄出時這次執行會顯示紅色 ✕。
 - **在 GitHub Desktop 修改之前**：先按上方 **Fetch origin** / **Pull origin**，因為系統每天會自動存入新資料。
 - **登記政府刺激措施**：編輯 `config.yaml` 最下方的 `stimulus:`，照範例格式加一行，Commit 並 Push。
 - **調整參數或門檻**：都在 `config.yaml`，不需要改程式。
