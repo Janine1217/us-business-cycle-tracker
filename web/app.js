@@ -102,6 +102,29 @@
         : `${esc(e.name)}：${esc(e.from || "無")} → ${esc(e.to || "解除")}${e.text && e.to ? `｜${esc(e.text)}` : ""}`}</li>`).join("")}</ul>`;
   }
 
+  // ── 總覽：股市多轉空風險 ───────────────────────
+  const MR = D.market_risk;
+  if (MR) {
+    const card = $("#risk-card"); card.hidden = false;
+    const L = MR.levels;
+    const lvl = MR.bear ? `<span class="lvl lvl-confirm">空頭進行中</span>` : MR.level ? `<span class="lvl lvl-${MR.level}">${esc(MR.level_zh)}</span>` : `<span class="lvl lvl-low">低</span>`;
+    const pos = Math.max(0, Math.min(100, MR.score ?? 0));
+    const ic = (c) => c.met == null ? "—" : c.met ? "✓" : "✕";
+    const grp = (t, name) => `<div class="risk-grp"><div class="small muted">${name}</div><ul class="items">${MR.components.filter((c) => c.type === t).map((c) =>
+      `<li class="it-${c.met == null ? "na" : c.met ? "met" : "no"}"><div><span class="it-icon">${ic(c)}</span><strong>${esc(c.name)}</strong></div>
+        <div class="small muted">${esc(c.rule)}</div><div class="small">${esc(c.value)}</div></li>`).join("")}</ul></div>`;
+    card.innerHTML = `<h2>股市多轉空風險</h2>
+      <div class="risk-top"><div class="risk-score">${MR.score ?? "—"}<small>／100</small></div>${lvl}
+        <span class="small muted">判斷月：${esc(MR.asof)}｜${MR.smooth} 個月平均（本月 ${MR.raw ?? "—"}）｜S&P 500 距高點 ${MR.dd ?? "—"}%</span></div>
+      <div class="risk-bar" role="img" aria-label="風險分數 ${MR.score}">
+        <i style="left:${L.watch}%"></i><i style="left:${L.warn}%"></i><i style="left:${L.confirm}%"></i><b style="left:${pos}%"></b></div>
+      <div class="risk-scale small muted"><span>0</span><span style="left:${L.watch}%" title="${L.watch}">觀察</span><span style="left:${L.warn}%" title="${L.warn}">警示</span><span style="left:${L.confirm}%" title="${L.confirm}">確認</span></div>
+      <p class="small">和景氣階段分開計算。回測（1985 年起）：分數 ≥ ${L.confirm} 時，之後 ${MR.backtest.forward_months} 個月 S&P 500 跌 ≥ ${MR.backtest.forward_drop}% 的比例約 ${MR.backtest.buckets[3].hit ?? "—"}%（所有月份平均 ${MR.backtest.base}%）。多數在高點前後 0–3 個月才升高，偏向「早期確認」。</p>
+      <details class="grp"><summary><span class="grp-name">各條件明細</span><span class="grp-count">${MR.components.filter((c) => c.met).length} / ${MR.components.filter((c) => c.met != null).length} 項成立</span></summary>
+        ${grp("lead", "領先型（通常在股市高點前出現）")}${grp("confirm", "確認型（高點前後才出現）")}
+        <p class="small muted">歷史走勢見趨勢圖 #R；回測見「回測」分頁。僅供參考，非投資建議。</p></details>`;
+  }
+
   // ── 回測 ───────────────────────────────────
   const B = D.backtest;
   function strip(timeline, asof) {
@@ -127,7 +150,18 @@
     const crit = B.criteria.map((x) => `<tr><td>${esc(x.no)} ${esc(x.label)}</td><td>${esc(x.ref)}</td>${
       x.timing.length ? x.timing.map((v) => `<td class="num">${v == null ? "—" : (v > 0 ? "+" : "") + v}</td>`).join("") : B.turns.map(() => "<td></td>").join("")
     }<td class="num">${x.met_months}</td><td class="num">${x.false_ratio != null ? x.false_ratio + "%" : x.expansion_ratio != null ? "擴張期 " + x.expansion_ratio + "%" : "—"}</td></tr>`).join("");
+    const MB = MR && MR.backtest;
+    const lead = (d, v) => d ? `${esc(d)}<br><span class="${v <= 0 ? "lag-ok" : "lag-bad"}">${v > 0 ? "+" : ""}${v} 個月</span>` : `<span class="lag-bad">沒有</span>`;
+    const riskBt = MB ? `<div class="card"><h2>股市多轉空風險分數回測</h2>
+        <p class="small muted">對照 S&P 500（月平均）。所有月份中，之後 ${MB.forward_months} 個月內跌 ≥ ${MB.forward_drop}% 的比例為 ${MB.base}%。完整報告：<a href="https://github.com/Janine1217/us-business-cycle-tracker/blob/main/docs/%E8%82%A1%E5%B8%82%E9%A2%A8%E9%9A%AA%E5%9B%9E%E6%B8%AC.md" target="_blank" rel="noopener">docs/股市風險回測.md</a></p>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>等級</th><th>分數</th><th>月數</th><th>${MB.forward_months} 個月內跌 ≥ ${MB.forward_drop}%</th><th>之後 12 個月報酬中位數</th></tr></thead><tbody>
+        ${MB.buckets.map((b) => `<tr><td>${esc(b.name)}</td><td>${esc(b.range)}</td><td class="num">${b.months}</td><td class="num">${b.hit ?? "—"}%</td><td class="num">${b.ret12 ?? "—"}%</td></tr>`).join("")}</tbody></table></div>
+        <h3 class="small" style="margin-top:12px">各次空頭：第一次達到各等級（負數＝在高點前）</h3>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>S&P 500 高點 → 低點</th><th>🟡 觀察</th><th>🟠 警示</th><th>🔴 確認</th></tr></thead><tbody>
+        ${MB.bears.map((b) => `<tr><td>${esc(b.peak)} → ${esc(b.trough)}（${b.depth}%）</td><td>${lead(b.watch, b.watch_lead)}</td><td>${lead(b.warn, b.warn_lead)}</td><td>${lead(b.confirm, b.confirm_lead)}</td></tr>`).join("")}</tbody></table></div>
+        <p class="small">🟠 警示區段：${MB.episodes.map((e) => `${esc(e.start)}–${esc(e.end)}${e.hit ? "✓" : e.hit === false ? "✕" : "？"}`).join("、")}（✓ 命中、✕ 誤報）</p></div>` : "";
     $("#backtest").innerHTML = `
+      ${riskBt}
       <div class="card"><h2>回測結論（1985-01 至今，對照 NBER 衰退期間）</h2>
         <div class="bt-grid">${sum(B.current, "目前設定（第 5 階段調整後）")}${sum(B.spec, "需求文件原始規則")}</div>
         <p class="small muted">⚠️ 使用修正後的資料（不是當時公布的初值），已粗略考慮發布延遲；只有 4 次衰退可供驗證，參數容易過度貼合歷史。
@@ -225,13 +259,15 @@
     const views = c.views.length > 1
       ? `<div class="seg" data-role="view">${c.views.map((v, i) => `<button aria-pressed="${i === 0}" data-i="${i}">${esc(v.name)}</button>`).join("")}</div>` : "";
     const ranges = `<div class="seg" data-role="range">${RANGES.map(([n, y]) => `<button aria-pressed="${y === 0}" data-y="${y}">${n}</button>`).join("")}</div>`;
-    const log = c.views.some((v) => v.log_ok) ? `<div class="seg" data-role="log"><button aria-pressed="false">對數刻度</button></div>` : "";
+    const log = c.views.some((v) => v.log_ok) ? `<div class="seg" data-role="log"><button aria-pressed="${!!c.default_log}">對數刻度</button></div>` : "";
+    const toggle = c.toggle ? `<div class="seg seg-multi" data-role="toggle" aria-label="開關各條線">${c.views[0].traces.map((t, i) =>
+      `<button aria-pressed="true" data-i="${i}"><i class="sw-line" style="background:var(--s${(i % 4) + 1})"></i>${esc(t.name)}</button>`).join("")}</div>` : "";
     const src = c.sources.map((s) =>
       `${esc(s.org)}｜<a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.id)}</a> ${esc(s.name)}` +
       (s.failed ? ` <span class="fail">✕ 最近一次更新失敗，最後成功：${esc(s.last_success || "無")}</span>` : "")).join("<br>");
     return `<section class="chart-card" id="chart-${esc(c.id)}" data-stages="${esc(c.stages.join(","))}">
       <h3><span class="ind-no">#${esc(c.id)}</span>${esc(c.title)}</h3>
-      <div class="chart-controls">${views}${ranges}${log}</div>
+      <div class="chart-controls">${toggle}${views}${ranges}${log}</div>
       <div class="plot" data-chart="${esc(c.id)}"></div>
       ${c.notes.length ? `<ul class="chart-notes">${c.notes.map((n) => `<li>${esc(n)}</li>`).join("")}</ul>` : ""}
       <div class="chart-src">來源：${src}</div>
@@ -239,7 +275,7 @@
   }).join("");
 
   const state = {}; // 每張圖目前的 view / range / log
-  D.charts.forEach((c) => (state[c.id] = { view: 0, years: 0, log: false, drawn: false }));
+  D.charts.forEach((c) => (state[c.id] = { view: 0, years: 0, log: !!c.default_log, drawn: false, hidden: new Set() }));
 
   function yRange(traces, axis, x0, log) {
     let lo = Infinity, hi = -Infinity;
@@ -264,8 +300,9 @@
     const log = st.log && v.log_ok;
     const hasY2 = v.traces.some((t) => t.axis === "y2");
 
+    const shown = v.traces.filter((t, i) => !st.hidden.has(i));
     const traces = v.traces.map((t, i) => ({
-      type: "scatter", mode: "lines", name: t.name, x: t.x, y: t.y,
+      type: "scatter", mode: "lines", name: t.name, x: t.x, y: t.y, visible: st.hidden.has(i) ? "legendonly" : true,
       yaxis: t.axis === "y2" ? "y2" : "y",
       line: { color: colors[i % colors.length], width: 2, dash: t.dash ? "dot" : "solid" },
       hovertemplate: `%{y:,.2f} ${t.unit}<extra>${t.name}</extra>`,
@@ -303,20 +340,33 @@
       showlegend: v.traces.length > 1,
       legend: { orientation: "h", x: 0, y: -0.14, font: { size: 12 } },
       xaxis: { ...axis, type: "date", range: [x0, lastX], showgrid: false },
-      yaxis: { ...axis, title: { text: v.y_title, font: { size: 11 } }, type: log ? "log" : "linear", range: yRange(v.traces, "y", x0, log) },
+      yaxis: { ...axis, title: { text: v.y_title, font: { size: 11 } }, type: log ? "log" : "linear", range: yRange(shown.length ? shown : v.traces, "y", x0, log) },
       shapes, annotations,
     };
     if (hasY2) layout.yaxis2 = { ...axis, title: { text: v.y2_title, font: { size: 11 } }, overlaying: "y", side: "right", showgrid: false,
       type: log ? "log" : "linear", range: yRange(v.traces, "y2", x0, log) };
     if (v.traces.length > 1) layout.margin.b = 64;
     Plotly.react(el, traces, layout, { responsive: true, displayModeBar: false, locale: "zh-TW" });
+    if (c.toggle && !el._toggleBound) { // 點圖例也同步開關按鈕
+      el._toggleBound = true;
+      el.on("plotly_legendclick", (ev) => { setHidden(id, ev.curveNumber); return false; });
+    }
     st.drawn = true;
+  }
+
+  function setHidden(id, i) {
+    const st = state[id];
+    st.hidden.has(i) ? st.hidden.delete(i) : st.hidden.add(i);
+    const btn = list.querySelector(`#chart-${CSS.escape(id)} [data-role="toggle"] [data-i="${i}"]`);
+    if (btn) btn.setAttribute("aria-pressed", !st.hidden.has(i));
+    draw(id);
   }
 
   list.addEventListener("click", (e) => {
     const b = e.target.closest(".seg button"); if (!b) return;
     const card = b.closest(".chart-card"); const id = card.id.slice(6); const st = state[id];
     const role = b.parentElement.dataset.role;
+    if (role === "toggle") { setHidden(id, +b.dataset.i); return; }
     if (role === "log") { st.log = !st.log; b.setAttribute("aria-pressed", st.log); }
     else {
       b.parentElement.querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));

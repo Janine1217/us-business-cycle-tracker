@@ -25,6 +25,7 @@ SPECIAL = {
     "a1_obs": "實質消費年增率出現第 1 次陡降；若之後再出現第 2 次陡降，確立衰退的機率升高（3.4 節 A1）。",
     "bottom": "景氣可能已經落底，進入復甦倒數（3.4 節 B 組）。",
     "top": "榮景期觸頂訊號增加，可能即將進入衰退期。",
+    "market_risk": "股市多轉空風險分數升高（領先型金融指標轉差），之後 12 個月 S&P 500 大跌的機率較高。",
 }
 PREVIEW = ROOT / "cache" / "email_preview.html"
 e = html.escape
@@ -125,6 +126,22 @@ def render(changes: list[dict], data: dict, cfg: dict, test: bool = False) -> tu
                          f'<td style="padding:4px 0;border-bottom:1px solid #eee"><b>{e(it["no"])}</b> {e(it["label"])}'
                          + (f'<br><span style="font-size:13px;color:#555">{e(vals)}</span>' if vals else "") + "</td></tr>")
                 T.append(f"  {_icon(it)} {it['no']} {it['label']}" + (f"｜{vals}" if vals else ""))
+            H.append("</table>")
+        # 股市多轉空風險
+        mrk = data.get("market_risk")
+        if mrk and any(c["key"] == "market_risk" for c in changes if c["kind"] != "cleared"):
+            if not keys:
+                H.append('<h2 style="font-size:16px;margin:20px 0 6px">2. 判斷依據成立狀況</h2>')
+                T.append("\n【判斷依據成立狀況】")
+            H.append(f'<h3 style="font-size:15px;margin:12px 0 4px">股市多轉空風險分數：{mrk["score"]}／100'
+                     f'{" " + e(mrk["level_zh"]) if mrk.get("level_zh") else ""}</h3><table style="width:100%;border-collapse:collapse;font-size:14px">')
+            T.append(f"股市多轉空風險分數：{mrk['score']}／100")
+            for c in mrk["components"]:
+                ic = "—" if c["met"] is None else "✓" if c["met"] else "✕"
+                H.append(f'<tr><td style="vertical-align:top;padding:4px 6px 4px 0;color:{"#1a7f37" if c["met"] else "#777"};font-weight:700;width:18px">{ic}</td>'
+                         f'<td style="padding:4px 0;border-bottom:1px solid #eee"><b>{e(c["type_zh"])}</b> {e(c["name"])}'
+                         f'<br><span style="font-size:13px;color:#555">{e(c["value"])}</span></td></tr>')
+                T.append(f"  {ic} {c['type_zh']} {c['name']}｜{c['value']}")
             H.append("</table>")
         # 3. 投資方向
         cur = st["stage"]

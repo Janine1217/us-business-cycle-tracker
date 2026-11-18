@@ -60,6 +60,52 @@ def buffett() -> tuple[list, list]:
     return official, est if len(est) > 1 else []
 
 
+def bear_markets(rows: list, drop: float = 20.0) -> list[dict]:
+    """從歷史高點下跌 ≥ drop% 的空頭：回傳 [{peak, peak_v, trough, trough_v, depth, recovered}]（月資料）。"""
+    out, peak_d, peak_v, cur = [], None, float("-inf"), None
+    for d, v in rows:
+        if v >= peak_v:
+            if cur:
+                cur["recovered"] = d
+                out.append(cur)
+                cur = None
+            peak_d, peak_v = d, v
+            continue
+        dd = (v / peak_v - 1) * 100
+        if cur is None and dd <= -drop:
+            cur = {"peak": peak_d, "peak_v": peak_v, "trough": d, "trough_v": v, "depth": dd, "recovered": None}
+        elif cur and v < cur["trough_v"]:
+            cur.update(trough=d, trough_v=v, depth=dd)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def market_chart(sp500: list, cfg: dict) -> dict:
+    """系統判定景氣 vs S&P 500、那斯達克、費半（可開關各指數）。"""
+    p = cfg.get("params", {})
+    drop = p.get("bear_market_drop", 20)
+    nasdaq, sox = M("NASDAQCOM"), M("SOX")
+    bears = bear_markets(tf.since(sp500, cfg["settings"]["backtest_start"]), drop)
+    marks = [{"x": b["peak"], "y": b["peak_v"], "text": f"空頭 {b['depth']:.0f}%"} for b in bears]
+    dd = tf.drawdown
+    return {
+        "id": "M", "title": "系統判定景氣 vs 股價指數", "sources": ["SHILLER_SP500", "SP500", "NASDAQCOM", "SOX"],
+        "stages_zh": ["額外參考"], "toggle": True, "default_log": True, "no_table": True,
+        "notes": ["背景顏色為系統判定的景氣階段，灰色陰影為 NBER 衰退期間；按上方按鈕或圖例可開關各指數",
+                  "皆為月平均；S&P 500 用席勒月資料，最新月份以 FRED SP500 補上",
+                  f"標註「空頭」：S&P 500 從前高（月平均）下跌 ≥ {drop:g}% 的起點；月平均會低估日資料的最大跌幅（例如 1987 年股災）",
+                  "費半指數來自 Yahoo Finance 非官方介面，1994-05 起；若介面失效只有這條線停止更新"],
+        "views": [V("指數", [T("S&P 500", sp500, "點", "pct"), T("那斯達克", nasdaq, "點", "pct"),
+                             T("費半", sox, "點", "pct")], "指數", log_ok=True) | {"marks": marks},
+                  V("距歷史高點", [T("S&P 500", dd(tf.since(sp500, "1985-01-01")), "%", "pp"),
+                                 T("那斯達克", dd(tf.since(nasdaq, "1985-01-01")), "%", "pp"),
+                                 T("費半", dd(sox), "%", "pp")], "%", hlines=[{"y": -drop, "label": f"−{drop:g}%"}]),
+                  V("年增率", [T("S&P 500", tf.yoy(sp500), "%", "pp"), T("那斯達克", tf.yoy(nasdaq), "%", "pp"),
+                             T("費半", tf.yoy(sox), "%", "pp")], "%", hlines=[{"y": 0}])],
+    }
+
+
 def build_charts(cfg: dict) -> list[dict]:
     p = cfg.get("params", {})
     core_lo, core_hi = p.get("core_cpi_band", [1.8, 3.0])
@@ -91,6 +137,7 @@ def build_charts(cfg: dict) -> list[dict]:
     cape_p80 = tf.percentile([v for d, v in tf.since(cape, cfg["settings"]["backtest_start"])], 80)
 
     charts = [
+        market_chart(sp500, cfg),
         {"id": "1", "title": "聯邦基金利率", "sources": ["DFEDTARU", "DFEDTAR", "DFF"],
          "notes": ["目標利率：2008-12-15 以前為單一目標 DFEDTAR，之後為目標區間上限 DFEDTARU"],
          "views": [V("利率", [T("目標利率（上限）", fed_target, "%", "pp"),

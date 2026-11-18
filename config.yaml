@@ -22,6 +22,30 @@ email:
   recipients: []
   keep_days: 7                      # 寄信失敗時保留變化，超過幾天的舊變化就不再補寄
 
+# ── 股市多轉空風險分數（和景氣階段分開計算，不影響階段判定）──────────────
+# 每個條件成立得 weight 分，總分換算成 0–100，再取 smooth_months 個月平均。
+# type：lead＝領先型（通常在股市高點前出現）、confirm＝確認型（高點前後才出現）
+# 回測（1985 年起）：分數 ≥ 50 時，之後 12 個月 S&P 500 跌 ≥ 15% 的比例約 4 成；< 20 時約 3%。
+#   但多數在高點前後 0–3 個月才升高，不是 6–12 個月前的預告。詳見 docs/股市風險回測.md
+market_risk:
+  smooth_months: 3
+  levels: {watch: 30, warn: 40, confirm: 50}   # 🟡 觀察、🟠 警示、🔴 確認（平滑後分數）
+  bear_gate: 20            # S&P 500 已從高點跌 ≥ 20%：視為「空頭進行中」，不再發出多轉空警示
+  forward_months: 12       # 回測：之後幾個月內
+  forward_drop: 15         #       下跌幾 % 算命中
+  max_age_months: 3        # 資料超過幾個月沒更新就當作缺漏（從分母扣除）
+  components:
+    - {key: yc_inverted, type: lead,    weight: 1, months: 24}
+    - {key: yc_resteep,  type: lead,    weight: 1, months: 24, low_months: 12, rise: 0.75}
+    - {key: first_cut,   type: lead,    weight: 1, months: 24, hike: 1.0, recent: 6, max_cut: 1.5}
+    - {key: credit,      type: lead,    weight: 1, months: 12, rise: 0.3}
+    - {key: nfci,        type: lead,    weight: 1, months: 12, rise: 0.15}
+    - {key: oil,         type: lead,    weight: 1, yoy: 40}
+    - {key: claims,      type: confirm, weight: 1, months: 12, rise_pct: 10}
+    - {key: sahm,        type: confirm, weight: 1, min: 0.3}
+    - {key: trend,       type: confirm, weight: 1, ma_months: 10}
+    - {key: sentiment,   type: confirm, weight: 1, months: 12, drop_pct: 15}
+
 # ── 判斷參數 ──────────────────────────────────────────────────
 params:
   core_cpi_band: [1.8, 3.0]       # 成長期依據 4：核心 CPI 年增率區間（%）
@@ -73,6 +97,8 @@ params:
   # 巴菲特指標（#30，額外參考，不影響階段判定）
   buffett_high: 133              # 高於此值：買股相對風險高
   buffett_safe: [70, 80]         # 落在此區間以下：相對安全
+  # 股價對照圖（#M）：S&P 500 從前高（月平均）下跌幾 % 以上算「空頭」
+  bear_market_drop: 20
 
 # ── 通用趨勢判斷 T1–T7（需求文件第 5 節）────────────────────────
 # 季資料把「月」改成「季」（依需求文件字面：6 季、24 季、12 季），且不取 3 期平均
@@ -150,7 +176,7 @@ stages:
       - 美元：避險心態會推升美元升值，衰退期可以考慮持有。
 
 # ── 原始序列（抓取單位）──────────────────────────────────────────
-# source: fred（FRED API）或 shiller（席勒資料）
+# source: fred（FRED API）、shiller（席勒資料）或 yahoo（Yahoo Finance，FRED 沒有的指數才用）
 # freq: D 日、W 週、M 月、Q 季
 series:
   # #1 聯邦基金利率
@@ -216,6 +242,7 @@ series:
   SHILLER_CAPE:  {source: shiller, field: CAPE, name: 席勒本益比（CAPE）, freq: M, unit: 倍, kind: index}
   SP500:         {source: fred, name: S&P 500（日，近 10 年）, freq: D, unit: 指數, kind: level}
   NASDAQCOM:     {source: fred, name: 那斯達克綜合指數, freq: D, unit: 指數, kind: level}
+  SOX:           {source: yahoo, symbol: "^SOX", name: 費城半導體指數（Yahoo Finance，非官方介面）, freq: D, unit: 指數, kind: level}
   # #27–#29
   VIXCLS:       {source: fred, name: VIX 恐慌指數, freq: D, unit: 指數, kind: index}
   BAA10Y:       {source: fred, name: Baa 公司債與 10 年期公債利差, freq: D, unit: 百分點, kind: rate}
@@ -225,6 +252,10 @@ series:
   # #30 巴菲特指標（額外參考）
   NCBEILQ027S: {source: fred, name: 非金融企業股票市值（Fed Z.1，季末）, freq: Q, unit: 百萬美元, kind: level}
   GNP:         {source: fred, name: 國民生產毛額（GNP，年率）, freq: Q, unit: 十億美元, kind: level}
+  # 股市多轉空風險分數（領先型金融指標）
+  T10Y3M:       {source: fred, name: 10 年期減 3 個月期公債殖利率差, freq: D, unit: 百分點, kind: rate}
+  T10Y2Y:       {source: fred, name: 10 年期減 2 年期公債殖利率差, freq: D, unit: 百分點, kind: rate}
+  SAHMREALTIME: {source: fred, name: 薩姆規則衰退指標（即時）, freq: M, unit: 百分點, kind: rate}
   # 衰退期間陰影
   USREC: {source: fred, name: NBER 衰退期間, freq: M, unit: 0/1, kind: index}
 

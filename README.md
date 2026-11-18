@@ -6,6 +6,7 @@
 - 需求文件：`Intelligence/05. 美國景氣追蹤/us_business_cycle_tracker_prompt.md`
 - 資料查證報告：[docs/資料查證報告.md](docs/資料查證報告.md)
 - 回測報告：[docs/回測報告.md](docs/回測報告.md)
+- 股市多轉空風險回測：[docs/股市風險回測.md](docs/股市風險回測.md)
 - 待調整事項：[docs/待調整事項.md](docs/待調整事項.md)
 
 > 僅供參考，非投資建議。

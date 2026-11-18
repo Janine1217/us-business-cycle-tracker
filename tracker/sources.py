@@ -66,6 +66,27 @@ def fred_series_info(series_id: str, api_key: str) -> dict:
         "observation_start", "observation_end", "last_updated", "notes")}
 
 
+# ── Yahoo Finance（非官方介面，FRED 沒有的指數才用）────────────────
+YAHOO_CHART = "https://query1.finance.yahoo.com/v8/finance/chart/"
+
+
+def yahoo_daily(symbol: str) -> tuple[str, list[tuple[str, float]]]:
+    """回傳 (網頁網址, [(YYYY-MM-DD, 收盤價), ...])；日期換算成交易所當地日期。"""
+    from urllib.parse import quote
+    r = _get(YAHOO_CHART + quote(symbol), {"period1": 0, "period2": int(time.time()) + 86400, "interval": "1d"})
+    try:
+        res = r.json()["chart"]["result"][0]
+        off = res["meta"].get("gmtoffset", 0)
+        closes = res["indicators"]["quote"][0]["close"]
+        ts = res["timestamp"]
+    except (KeyError, IndexError, TypeError, ValueError) as e:
+        raise SourceError(f"Yahoo Finance 回傳格式改變：{e}")
+    rows = [(time.strftime("%Y-%m-%d", time.gmtime(t + off)), float(c)) for t, c in zip(ts, closes) if c is not None]
+    if not rows:
+        raise SourceError(f"{symbol} 沒有資料")
+    return f"https://finance.yahoo.com/quote/{quote(symbol)}/", rows
+
+
 # ── 席勒資料 ────────────────────────────────────────────
 def shiller_workbook_url(page: str, fallback: str) -> str:
     """shillerdata.com 的檔案網址含變動的 ID，每次從首頁找最新連結。"""

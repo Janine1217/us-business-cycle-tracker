@@ -14,6 +14,9 @@ from .settings import ROOT, load_config, stamp
 from .backtest import run_backtest, write_report
 from .stage import record_live, run_stage
 from .todo import load_todo
+from . import market_risk as mr
+from . import transform as tf
+from .charts import S as _S, M as _M
 
 SITE = ROOT / "site"
 TEMPLATE = ROOT / "web"
@@ -44,6 +47,9 @@ def _source_info(sid: str, cfg: dict, status: dict) -> dict:
     if sc["source"] == "fred":
         url = f"https://fred.stlouisfed.org/series/{sid}"
         org = "FRED（聖路易聯邦準備銀行）"
+    elif sc["source"] == "yahoo":
+        url = st.get("source_url") or f"https://finance.yahoo.com/quote/{sc['symbol']}/"
+        org = "Yahoo Finance（非官方介面）"
     else:
         url = st.get("source_url") or cfg["settings"]["shiller"]["page"]
         org = "Robert Shiller 美股資料"
@@ -66,6 +72,13 @@ def run_build(record: bool = True) -> dict:
     write_report(bt, cfg, now, st["timeline"])
     crits = st.pop("_crits")
     st.pop("_extra")
+    # 股市多轉空風險分數（和景氣階段分開，訊號一起記錄、寄信）
+    risk = mr.run_market_risk(cfg, now[:10])
+    risk_sm = mr.summary(risk, mr.backtest(risk, cfg), cfg)
+    mr.write_report(risk_sm, cfg, now)
+    rs = mr.signal(risk)
+    if rs:
+        st["signals"].append(rs)
     changes = record_live(st, now) if record else []
     trends = indicator_trends(cfg)
     ind_state: dict[str, str] = {}
@@ -80,7 +93,10 @@ def run_build(record: bool = True) -> dict:
     stage_zh_timeline = [[a, b, STAGE_ZH[s]] for a, b, s in st["timeline"]]
 
     charts_out, table = [], []
-    for ch in build_charts(cfg):
+    chart_defs = build_charts(cfg)
+    sp_rows = tf.since(tf.extend(_S("SHILLER_SP500"), _M("SP500")), start)
+    chart_defs.insert(1, mr.chart(risk_sm, sp_rows))
+    for ch in chart_defs:
         ind = indicators.get(ch["id"], {})
         sources = [_source_info(s, cfg, status) for s in ch["sources"]]
         notes = list(ch.get("notes", []))
@@ -95,12 +111,13 @@ def run_build(record: bool = True) -> dict:
                     continue
                 if data[0][0] > f"{start[:4]}-12-31" and "估計" not in t["name"]:
                     msg = f"{t['name']}：本資料自 {data[0][0][:4]} 年起提供"
-                    if msg not in notes:
+                    if not any(n.startswith(t["name"] + "：") for n in notes):
                         notes.append(msg)
                 traces.append({"name": t["name"], "unit": t["unit"], "axis": t["axis"], "dash": t["dash"],
                                "x": [d for d, _ in data], "y": [_round(y) for _, y in data]})
             views.append({k: v[k] for k in ("name", "y_title", "y2_title", "hlines", "vlines", "log_ok")}
-                         | {"traces": traces, "marks": []})
+                         | {"traces": traces, "marks": [{"x": m["x"], "y": _round(m["y"]), "text": m["text"]}
+                                                        for m in v.get("marks", []) if m["x"] >= start]})
         # 特殊型態標註（畫在第一個檢視）
         if views and views[0]["traces"] and st["marks"].get(ch["id"]):
             t0 = views[0]["traces"][0]
@@ -111,9 +128,12 @@ def run_build(record: bool = True) -> dict:
                     y = lookup.get(mk["x"])
                 if y is not None and mk["x"] >= start:
                     views[0]["marks"].append({"x": mk["x"], "y": _round(y), "text": mk["text"]})
-        stages = [STAGE_ZH[s] for s in ind.get("stages", [])] + (["額外參考"] if ind.get("ref") else [])
+        stages = ch.get("stages_zh") or [STAGE_ZH[s] for s in ind.get("stages", [])] + (["額外參考"] if ind.get("ref") else [])
         charts_out.append({"id": ch["id"], "title": ch["title"], "stages": stages,
-                           "sources": sources, "notes": notes, "views": views})
+                           "sources": sources, "notes": notes, "views": views,
+                           "toggle": bool(ch.get("toggle")), "default_log": bool(ch.get("default_log"))})
+        if ch.get("no_table"):
+            continue
 
         # 指標總表：以第一個檢視的第一條線為代表值
         head = ch["views"][0]["traces"][0]
@@ -141,6 +161,7 @@ def run_build(record: bool = True) -> dict:
         "stage": st | {"timeline": stage_zh_timeline},
         "backtest": {k: bt[k] for k in ("turns", "current", "spec", "criteria")},
         "todo": load_todo(),
+        "market_risk": risk_sm,
     }
     SITE.mkdir(exist_ok=True)
     for f in TEMPLATE.iterdir():

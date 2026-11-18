@@ -71,6 +71,14 @@ def run_fetch(only: list[str] | None = None) -> dict:
             for sid in shiller_ids:
                 fail(sid, str(e)[:300])
 
+    # Yahoo Finance（費半等 FRED 沒有的指數）
+    for sid in [k for k, v in series_cfg.items() if v["source"] == "yahoo"]:
+        try:
+            url, rows = sources.yahoo_daily(series_cfg[sid]["symbol"])
+            ok(sid, rows, url)
+        except Exception as e:  # noqa: BLE001
+            fail(sid, str(e)[:300])
+
     failed = [k for k, v in results.items() if v]
     run_failed = bool(results) and len(failed) / len(results) > st["run_failure_ratio"]
     status["consecutive_failed_runs"] = status.get("consecutive_failed_runs", 0) + 1 if run_failed else 0
