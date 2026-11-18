@@ -256,5 +256,7 @@ def record_live(result: dict, now: str) -> list[dict]:
                             f"{s.get('met', '')}/{s.get('avail', '')}" if s else "", "、".join(s.get("met_labels", []))])
     cur["names"] = names
     cur["time"] = now
+    # 尚未寄出提醒信的變化（寄信失敗時保留，下次一起寄）；由 tracker/notify.py 寄出後清空
+    cur["unsent"] = (prev.get("unsent", []) + [c | {"time": now} for c in changes])[-50:]
     STATE_FILE.write_text(json.dumps(cur, ensure_ascii=False, indent=1), encoding="utf-8")
     return changes

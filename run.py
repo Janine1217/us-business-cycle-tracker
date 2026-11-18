@@ -3,6 +3,9 @@
   python run.py verify   用 FRED API 查證所有代碼，輸出 docs/series_metadata.md
   python run.py fetch    抓取所有序列，更新 data/series/*.csv 與 data/status.json
   python run.py build    產生儀表板 site/index.html（可直接用瀏覽器開啟）
+  python run.py notify   有轉折變化時寄提醒信（每日排程使用；加 --dry-run 只產生預覽、不寄出）
+  python run.py preview-email  產生一封示範信的預覽檔（不寄出）
+  python run.py test-email     寄一封測試提醒信（以目前所有訊號示範）
 """
 from __future__ import annotations
 
@@ -62,8 +65,16 @@ def cmd_build() -> None:
         print(f"  訊號變化：{c['name']} {c['from'] or '無'} → {c['to'] or '解除'}")
 
 
+def cmd_notify(dry_run: bool = False, test: bool = False) -> None:
+    from tracker.notify import run_notify
+    for line in run_notify(dry_run=dry_run, test=test):
+        print(line)
+
+
 if __name__ == "__main__":
-    commands = {"verify": cmd_verify, "fetch": cmd_fetch, "build": cmd_build}
+    commands = {"verify": cmd_verify, "fetch": cmd_fetch, "build": cmd_build, "notify": lambda: cmd_notify(dry_run="--dry-run" in sys.argv),
+                "preview-email": lambda: cmd_notify(dry_run=True, test=True),
+                "test-email": lambda: cmd_notify(test=True)}
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
         print(__doc__)
         sys.exit(2)

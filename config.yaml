@@ -13,6 +13,15 @@ settings:
     page: "https://shillerdata.com/"                                   # 先從這頁找最新檔案連結
     fallback_url: "http://www.econ.yale.edu/~shiller/data/ie_data.xls"  # 備援（2023-09 後未更新）
 
+# ── Email 提醒（第 4 階段）──────────────────────────────────────
+# 寄件帳號與密碼放在 GitHub Secrets（SMTP_USER、SMTP_PASSWORD），不寫在這裡
+email:
+  dashboard_url: "https://janine1217.github.io/us-business-cycle-tracker/"
+  # 收件人：這個 repo 是公開的，寫在這裡的地址任何人都看得到。
+  # 留空 [] ＝寄給 SMTP_USER 自己；想寄給別人又不想公開，改在 GitHub Secrets 加 MAIL_TO（多個用逗號分隔）
+  recipients: []
+  keep_days: 7                      # 寄信失敗時保留變化，超過幾天的舊變化就不再補寄
+
 # ── 判斷參數 ──────────────────────────────────────────────────
 params:
   core_cpi_band: [1.8, 3.0]       # 成長期依據 4：核心 CPI 年增率區間（%）

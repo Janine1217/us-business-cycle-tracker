@@ -1,5 +1,5 @@
-# 每天台灣時間 08:00：抓資料 → 更新儀表板 → 部署到 GitHub Pages
-# （階段 4 會再加上「判斷是否寄提醒信」）
+# 每天台灣時間 08:00：抓資料 → 更新儀表板 → 判斷是否寄提醒信 → 部署到 GitHub Pages
+# 任何步驟失敗、且連續失敗達到 config.yaml 的 failure_alert_after_runs 次，寄系統異常通知
 name: 每日更新儀表板
 
 on:
@@ -12,6 +12,7 @@ on:
 
 permissions:
   contents: write              # 把每天抓到的資料存回 repo（data/ 資料夾）
+  actions: read                # 查詢過去幾次執行是否失敗（系統異常通知用）
   pages: write
   id-token: write
 
@@ -46,6 +47,13 @@ jobs:
       - name: 產生儀表板
         run: python run.py build
 
+      - name: 判斷是否寄提醒信
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python run.py notify
+
       - name: 保存歷史資料
         run: |
           git config user.name "github-actions[bot]"
@@ -64,3 +72,12 @@ jobs:
       - name: 部署到 GitHub Pages
         id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: 排程失敗時寄系統異常通知
+        if: failure()
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m tracker.mailer crash
