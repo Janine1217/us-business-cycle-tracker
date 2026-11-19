@@ -70,13 +70,16 @@ def run_stage(cfg: dict, today: str) -> dict:
             tops = [window(c.key, i, rr["top_within"]) for c in by_group["top"]]
             ta = [t for t in tops if t is not None]
             top_ok = bool(ta) and sum(ta) / len(ta) >= rr["top_min"] - 1e-9
-            core = (a1m and (a2w or p3)) or (a2m and p3)
-            confirm = bool(core and top_ok)
+            fk = rr.get("fin")  # 金融情勢轉緊（A3）：可佐證 A1/A2，也可取代觸頂門檻
+            fin = bool(fk and raw.get(fk) and raw[fk][i])
+            core = (a1m and (a2w or p3 or fin)) or (a2m and (p3 or fin))
+            confirm = bool(core and (top_ok or fin))
             why = []
             if a1m: why.append("A1 2 次消費陡降")
             if a2w: why.append(f"A2 民間投資急降（近 {rr['a2_within']} 個月）")
             if p3: why.append("觸頂依據 3 U 型結構確立")
             if top_ok: why.append(f"近 {rr['top_within']} 個月觸頂訊號 {sum(ta)}/{len(ta)} 項成立")
+            if fin: why.append("A3 金融情勢轉緊")
         else:
             confirm, why = bool(a1m), (["A1 2 次消費陡降"] if a1m else [])
             if a2m: why.append("A2 民間投資急降")

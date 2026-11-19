@@ -563,6 +563,16 @@ def build_criteria(cfg: dict, today: str) -> tuple[list[Crit], dict]:
                                      (i >= 2 and r[i][1] < 0 and r[i - 2][1] - r[i][1] >= p["invest_drop_pp"]),
                                      lambda i, r: r[i][1] < 0), gp, "%", P)]))
 
+    # A3（補充）：金融情勢轉緊，可取代 A1/A2 的佐證與觸頂門檻（第 5 階段後依回測加入，見 stage_rules.recession.fin）
+    nf = M("NFCI")
+    fmin = p.get("nfci_min", 0)
+    add(Crit("A3", "recession", "A3", "金融情勢轉緊（補充依據）", ["29"],
+             f"芝加哥聯準銀行金融情勢指數（NFCI，月平均）≥ {fmin}，代表金融情勢比歷史平均緊；"
+             "可作為 A1、A2 的佐證，也可取代「近 12 個月觸頂訊號 ≥ 60%」的門檻",
+             [custom("金融情勢指數 NFCI", f"≥ {fmin}", "M",
+                     threshold_flags(nf, lambda i, r: r[i][1] >= fmin, lambda i, r: r[i][1] >= fmin - 0.2),
+                     nf, "", P, lag=0)]))
+
     # ── 3.4 B 判斷落底 ──
     add(Crit("B1", "bottom", "B1", "實質民間投資季增率落底反轉", ["20"], "季增率符合 T4「落底反彈」",
              [C("實質民間投資季增率", tf.pct_change(S("GPDIC1")), "Q", "pp", "T4", "%")]))

@@ -189,7 +189,11 @@ def write_report(bt: dict, cfg: dict, now: str, timeline: list) -> None:
           f"3. **每個階段至少停留 {r.get('min_stage_months', 0)} 個月**（`min_stage_months`）：避免一個月內連跳好幾個階段（「確立衰退」不受限制）。",
           f"4. **轉入門檻**（`enter_levels`）：{', '.join(f'{ZH[k]} {v:.0%}' for k, v in r.get('enter_levels', {}).items())}。",
           "5. **2 次消費陡降**（`drop_min_pp`、`drop_tolerance_pp`）：依使用者圖二，第 1 次陡降容許單季持平或小幅反彈。",
-          "6. **資料發布延遲**（`release_lag`）：月資料延後 1 個月、季資料延後 1 個月、違約率延後 2 個月才計入，避免回測用到當時還沒公布的資料。", "",
+          "6. **資料發布延遲**（`release_lag`）：月資料延後 1 個月、季資料延後 1 個月、違約率延後 2 個月才計入，避免回測用到當時還沒公布的資料。",
+          f"7. **金融情勢轉緊可佐證衰退**（2026-11 加入，`stage_rules.recession.fin: {r.get('recession', {}).get('fin')}`）：A3 金融情勢指數 NFCI ≥ "
+          f"{cfg['params'].get('nfci_min', 0)} 時，可作為 A1、A2 的佐證，也可取代「觸頂訊號 ≥ 60%」門檻。"
+          "加入前 2008 年進入衰退落後 11 個月（卡在觸頂訊號只有 5/10）、2020 年落後 4 個月；加入後分別為 3 個月、0 個月，其他衰退與誤判不變。"
+          "注意：NFCI 的歷史數值每週都會重新估計，回測用的是修正後數值。", "",
           "## 5. 仍待改善（依本次回測結果自動列出）", ""]
     issues = [f"- {d} 誤判進入衰退期" for d in c["false"]]
     issues += [f"- {x['peak']} 的衰退，進入衰退期落後 {x['enter_lag']} 個月" for x in c["rows"] if x["enter_lag"] and x["enter_lag"] > 6]
