@@ -11,6 +11,10 @@ on:
         description: "寄一封測試提醒信（確認 Email 設定）"
         type: boolean
         default: false
+      realtime:
+        description: "重跑即時資料回測（ALFRED，約 10 分鐘；平常每月 1 日自動執行）"
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths: ["web/**", "tracker/**", "config.yaml", "run.py", ".github/workflows/daily.yml", "docs/待調整事項.md"]
@@ -48,6 +52,13 @@ jobs:
         env:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
         run: python run.py fetch
+
+      - name: 即時資料回測（每月 1 日）
+        continue-on-error: true    # 失敗時沿用上個月的結果，不影響每日更新
+        env:
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: |
+          if [ "${{ inputs.realtime }}" = "true" ]; then python run.py realtime; else python run.py realtime --if-due; fi
 
       - name: 產生儀表板
         run: python run.py build

@@ -160,12 +160,36 @@
         <div class="tbl-wrap"><table class="tbl"><thead><tr><th>S&P 500 高點 → 低點</th><th>🟡 觀察</th><th>🟠 警示</th><th>🔴 確認</th></tr></thead><tbody>
         ${MB.bears.map((b) => `<tr><td>${esc(b.peak)} → ${esc(b.trough)}（${b.depth}%）</td><td>${lead(b.watch, b.watch_lead)}</td><td>${lead(b.warn, b.warn_lead)}</td><td>${lead(b.confirm, b.confirm_lead)}</td></tr>`).join("")}</tbody></table></div>
         <p class="small">🟠 警示區段：${MB.episodes.map((e) => `${esc(e.start)}–${esc(e.end)}${e.hit ? "✓" : e.hit === false ? "✕" : "？"}`).join("、")}（✓ 命中、✕ 誤報）</p></div>` : "";
+    const RT = D.realtime;
+    let rtCard = "";
+    if (RT) {
+      const V = RT.variants, rv = RT.revised, rt = V.realtime, st = V.strict;
+      const fa = (x) => `${x.false.length} 次${x.false.length ? `（${x.false.map(esc).join("、")}，${x.false_months} 個月）` : ""}`;
+      const rows = rv.rows.map((a, i) => `<tr><td>${esc(a.peak)} – ${esc(a.trough)}</td><td>${cell(a.enter, a.enter_lag)}</td><td>${cell(rt.rows[i].enter, rt.rows[i].enter_lag)}</td><td>${cell(st.rows[i].enter, st.rows[i].enter_lag)}</td><td>${cell(a.recover, a.recover_lag)}</td><td>${cell(rt.rows[i].recover, rt.rows[i].recover_lag)}</td></tr>`).join("");
+      const revs = RT.revisions.map((r) => `<tr><td>${esc(r.name)}</td><td>${esc(r.since)}</td><td class="num">${r.mean}</td><td class="num">${r.near ?? "—"}</td><td class="num">${r.flips}</td><td class="small">${r.examples.map((e) => `${esc(e.month)} ${e.first}→${e.now}`).join("；") || "—"}</td></tr>`).join("");
+      rtCard = `<div class="card"><h2>即時資料回測（當時公布的數值）</h2>
+        <p class="small muted">每個月月底只用當時已公布的版本（ALFRED：FRED 歷史版本資料庫）重跑一次判定，模擬「當時看儀表板」會看到什麼。每月 1 日自動更新；最近一次：${esc(RT.generated)}，模擬到 ${esc(RT.through)}。
+        嚴格版：NFCI 在 2011-05 首次公布前當作不存在。完整報告：<a href="https://github.com/Janine1217/us-business-cycle-tracker/blob/main/docs/%E5%8D%B3%E6%99%82%E5%9B%9E%E6%B8%AC.md" target="_blank" rel="noopener">docs/即時回測.md</a></p>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th>NBER 衰退</th><th>修正後資料<br>進入衰退</th><th>當時數值</th><th>嚴格版</th><th>修正後資料<br>進入復甦</th><th>當時數值</th></tr></thead><tbody>${rows}</tbody></table></div>
+        <div class="tbl-wrap"><table class="tbl"><thead><tr><th></th><th>修正後資料</th><th>當時數值</th><th>嚴格版</th></tr></thead><tbody>
+          <tr><td>誤判衰退</td><td>${fa(rv)}</td><td>${fa(rt)}</td><td>${fa(st)}</td></tr>
+          <tr><td>階段切換次數</td><td class="num">${rv.switches}</td><td class="num">${rt.switches}</td><td class="num">${st.switches}</td></tr>
+          <tr><td>判定不同的月份</td><td class="num">—</td><td class="num">${rt.diff_months}/${rt.months}</td><td class="num">${st.diff_months}/${st.months}</td></tr></tbody></table></div>
+        <div class="small muted" style="margin-top:10px">修正後資料</div><div class="tl">${strip(rv.timeline, asof)}</div>
+        <div class="small muted">當時數值</div><div class="tl">${strip(rt.timeline, asof)}</div>
+        <div class="small muted">嚴格版</div><div class="tl">${strip(st.timeline, asof)}</div>
+        <details class="grp"><summary><span class="grp-name">初值 vs 目前數值差多少</span><span class="grp-count">${RT.revisions.length} 個序列</span></summary>
+          <p class="small muted">單位：百分點。只計算 ALFRED 有存到第一次公布的觀測值；衰退前後＝NBER 衰退開始前 6 個月到結束後 6 個月。</p>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>序列</th><th>起</th><th>平均差</th><th>衰退前後</th><th>正負翻轉</th><th>衰退前後翻轉例子（初值→目前）</th></tr></thead><tbody>${revs}</tbody></table></div></details>
+        <p class="small muted">⚠️ ALFRED 對多數序列的存檔從 1990 年代以後才開始（耐久財訂單 1999、失業金 2009、CFNAI 2011），更早的期間只能沿用修正後數值，所以 1990、2001 年的結果可信度較低。</p></div>`;
+    }
     $("#backtest").innerHTML = `
       ${riskBt}
       <div class="card"><h2>回測結論（1985-01 至今，對照 NBER 衰退期間）</h2>
         <div class="bt-grid">${sum(B.current, "目前設定（第 5 階段調整後）")}${sum(B.spec, "需求文件原始規則")}</div>
-        <p class="small muted">⚠️ 使用修正後的資料（不是當時公布的初值），已粗略考慮發布延遲；只有 4 次衰退可供驗證，參數容易過度貼合歷史。
+        <p class="small muted">⚠️ 使用修正後的資料（不是當時公布的初值），已粗略考慮發布延遲；只有 4 次衰退可供驗證，參數容易過度貼合歷史。${RT ? "改用當時公布數值的結果見下方「即時資料回測」，實際運作較接近該結果。" : ""}
         完整報告：<a href="https://github.com/Janine1217/us-business-cycle-tracker/blob/main/docs/%E5%9B%9E%E6%B8%AC%E5%A0%B1%E5%91%8A.md" target="_blank" rel="noopener">docs/回測報告.md</a></p></div>
+      ${rtCard}
       <div class="card"><h2>階段時間軸對照</h2>
         <div class="small muted">目前設定</div><div class="tl">${strip(G.timeline, asof)}</div>
         <div class="small muted">需求文件原始規則</div><div class="tl">${strip(B.spec.timeline, asof)}</div>

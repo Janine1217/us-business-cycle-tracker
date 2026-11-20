@@ -14,6 +14,7 @@ from .settings import ROOT, load_config, stamp
 from .backtest import run_backtest, write_report
 from .stage import record_live, run_stage
 from .todo import load_todo
+from .realtime import load as realtime_load
 from . import market_risk as mr
 from . import transform as tf
 from .charts import S as _S, M as _M
@@ -162,6 +163,7 @@ def run_build(record: bool = True) -> dict:
         "backtest": {k: bt[k] for k in ("turns", "current", "spec", "criteria")},
         "todo": load_todo(),
         "market_risk": risk_sm,
+        "realtime": realtime_load(),
     }
     SITE.mkdir(exist_ok=True)
     for f in TEMPLATE.iterdir():

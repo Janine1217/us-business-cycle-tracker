@@ -6,6 +6,7 @@
   python run.py notify   有轉折變化時寄提醒信（每日排程使用；加 --dry-run 只產生預覽、不寄出）
   python run.py preview-email  產生一封示範信的預覽檔（不寄出）
   python run.py test-email     寄一封測試提醒信（以目前所有訊號示範）
+  python run.py realtime       即時資料回測（ALFRED 當時數值），輸出 docs/即時回測.md；加 --if-due 只在每月 run_day 執行
 """
 from __future__ import annotations
 
@@ -71,8 +72,22 @@ def cmd_notify(dry_run: bool = False, test: bool = False) -> None:
         print(line)
 
 
+def cmd_realtime() -> None:
+    from tracker.realtime import run_realtime
+    from tracker.settings import now_local
+    cfg = load_config()
+    if "--if-due" in sys.argv and now_local(cfg).day != cfg["realtime_backtest"]["run_day"]:
+        print("即時資料回測：今天不是排定日，略過")
+        return
+    R = run_realtime()
+    for v in R["variants"].values():
+        lags = "、".join(f"{r['peak'][:4]} {r['enter_lag']:+d}" if r["enter_lag"] is not None else f"{r['peak'][:4]} 沒抓到" for r in v["rows"])
+        print(f"{v['name']}：進入衰退 {lags}；誤判 {len(v['false'])} 次；與修正後資料不同 {v['diff_months']}/{v['months']} 個月")
+    print("結果寫入 data/realtime_backtest.json、docs/即時回測.md")
+
+
 if __name__ == "__main__":
-    commands = {"verify": cmd_verify, "fetch": cmd_fetch, "build": cmd_build, "notify": lambda: cmd_notify(dry_run="--dry-run" in sys.argv),
+    commands = {"realtime": cmd_realtime,"verify": cmd_verify, "fetch": cmd_fetch, "build": cmd_build, "notify": lambda: cmd_notify(dry_run="--dry-run" in sys.argv),
                 "preview-email": lambda: cmd_notify(dry_run=True, test=True),
                 "test-email": lambda: cmd_notify(test=True)}
     if len(sys.argv) < 2 or sys.argv[1] not in commands:
