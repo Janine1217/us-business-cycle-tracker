@@ -169,6 +169,13 @@ def run_build(record: bool = True) -> dict:
             shutil.copy2(f, SITE / f.name)
     (SITE / "data.js").write_text("window.DASHBOARD = " + json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + ";\n",
                                   encoding="utf-8")
+    # 加版本號，避免瀏覽器沿用快取的舊資料（GitHub Pages 預設快取 10 分鐘）
+    ver = "".join(ch for ch in str(now) if ch.isdigit())
+    page = SITE / "index.html"
+    html = page.read_text(encoding="utf-8")
+    for name in ("data.js", "app.js", "style.css"):
+        html = html.replace(f'"{name}"', f'"{name}?v={ver}"')
+    page.write_text(html, encoding="utf-8")
     return {"charts": len(charts_out), "size_kb": (SITE / "data.js").stat().st_size // 1024,
             "stage": st["stage"]["name"], "signals": [f"{s['level_zh']} {s['name']}" for s in st["signals"]],
             "changes": changes}
