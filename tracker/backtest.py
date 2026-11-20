@@ -193,7 +193,11 @@ def write_report(bt: dict, cfg: dict, now: str, timeline: list) -> None:
           f"7. **金融情勢轉緊可佐證衰退**（2026-11 加入，`stage_rules.recession.fin: {r.get('recession', {}).get('fin')}`）：A3 金融情勢指數 NFCI ≥ "
           f"{cfg['params'].get('nfci_min', 0)} 時，可作為 A1、A2 的佐證，也可取代「觸頂訊號 ≥ 60%」門檻。"
           "加入前 2008 年進入衰退落後 11 個月（卡在觸頂訊號只有 5/10）、2020 年落後 4 個月；加入後分別為 3 個月、0 個月，其他衰退與誤判不變。"
-          "注意：NFCI 的歷史數值每週都會重新估計，回測用的是修正後數值。", "",
+          "注意：NFCI 的歷史數值每週都會重新估計，回測用的是修正後數值。",
+          f"8. **確立衰退必須伴隨就業惡化**（2026-11 加入，`stage_rules.recession.employment: {r.get('recession', {}).get('employment')}`）：A4 初領失業救濟金（3 個月平均）比 "
+          f"{cfg['params'].get('claims_lookback', 12)} 個月低點上升 ≥ {cfg['params'].get('claims_rise_pct', 15)}%，或即時薩姆規則 ≥ {cfg['params'].get('sahm_min', 0.3)}。"
+          "加入前誤判 2 次（1987-04、2023-01，共 35 個月，當時就業都沒有轉差）；加入後 0 次，4 次衰退與復甦的判定時間不變。"
+          "薩姆規則用 0.3 而非原始的 0.5：這裡只當佐證，0.5 是「衰退已開始」的門檻，會讓 1990、2008 年各晚 1 個月。", "",
           "## 5. 仍待改善（依本次回測結果自動列出）", ""]
     issues = [f"- {d} 誤判進入衰退期" for d in c["false"]]
     issues += [f"- {x['peak']} 的衰退，進入衰退期落後 {x['enter_lag']} 個月" for x in c["rows"] if x["enter_lag"] and x["enter_lag"] > 6]

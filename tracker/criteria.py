@@ -573,6 +573,22 @@ def build_criteria(cfg: dict, today: str) -> tuple[list[Crit], dict]:
                      threshold_flags(nf, lambda i, r: r[i][1] >= fmin, lambda i, r: r[i][1] >= fmin - 0.2),
                      nf, "", P, lag=0)]))
 
+    # A4（補充）：就業惡化，確立衰退的必要條件（2026-11 依回測加入，見 stage_rules.recession.employment）
+    cr_pct, cr_n, smin = p.get("claims_rise_pct", 15), p.get("claims_lookback", 12), p.get("sahm_min", 0.3)
+    c3 = tf.ma(M("IC4WSA"), 3)
+    sahm = S("SAHMREALTIME")
+    c3_rise = [(d, (v / min(x for _, x in c3[max(0, i - cr_n + 1):i + 1]) - 1) * 100) for i, (d, v) in enumerate(c3)]
+    add(Crit("A4", "recession", "A4", "就業惡化（補充依據）", ["5"],
+             f"初領失業救濟金（3 個月平均）比過去 {cr_n} 個月低點上升 ≥ {cr_pct}%，或即時薩姆規則 ≥ {smin}"
+             "（任一成立）；確立衰退時必須成立，用來排除就業沒有轉差的誤判（例如 1987、2023 年）",
+             [custom("初領失業救濟金比低點上升", f"≥ {cr_pct}%", "M",
+                     threshold_flags(c3_rise, lambda i, r: r[i][1] >= cr_pct, lambda i, r: r[i][1] >= cr_pct * 0.6),
+                     c3_rise, "%", P, lag=0),
+              custom("薩姆規則（即時）", f"≥ {smin}", "M",
+                     threshold_flags(sahm, lambda i, r: r[i][1] >= smin, lambda i, r: r[i][1] >= smin - 0.1),
+                     sahm, " 百分點", P)],
+             combine="any"))
+
     # ── 3.4 B 判斷落底 ──
     add(Crit("B1", "bottom", "B1", "實質民間投資季增率落底反轉", ["20"], "季增率符合 T4「落底反彈」",
              [C("實質民間投資季增率", tf.pct_change(S("GPDIC1")), "Q", "pp", "T4", "%")]))
