@@ -52,8 +52,6 @@ def load_todo() -> dict:
             "config": row.get("相關設定", ""), "status": status,
             "done": status.startswith("✅") or "已解決" in status,
         })
-    for s in sections:  # 已解決的排到最後
-        s["items"].sort(key=lambda x: x["done"])
     items = [i for s in sections for i in s["items"]]
     return {"sections": [s for s in sections if s["items"]], "log": log, "updated": updated,
             "open": sum(not i["done"] for i in items), "done": sum(i["done"] for i in items)}

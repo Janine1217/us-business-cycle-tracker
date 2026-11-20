@@ -199,7 +199,7 @@
       TD.log.map((r) => `<tr>${Object.values(r).map((v) => `<td>${md(v)}</td>`).join("")}</tr>`).join("")}</tbody></table></div></div>` : "";
     $("#todo").innerHTML = `<div class="card"><h2>待調整事項</h2>
         <p><strong>${TD.open}</strong> 項待處理｜<strong>${TD.done}</strong> 項已解決${TD.updated ? `<span class="small muted">（最後整理 ${esc(TD.updated)}）</span>` : ""}</p>
-        <p class="small muted">已知、但暫時找不到更好指標或依據的問題。內容來自 <a href="${src}" target="_blank" rel="noopener">docs/待調整事項.md</a>；解決後把該列「狀態」改成「✅ 已解決 日期」，這裡會自動劃線並移到最後。</p></div>` +
+        <p class="small muted">已知、但暫時找不到更好指標或依據的問題。內容來自 <a href="${src}" target="_blank" rel="noopener">docs/待調整事項.md</a>；解決後把該列「狀態」改成「✅ 已解決 日期」，這裡會自動在原位置劃線並標 ✅。</p></div>` +
       TD.sections.map((s) => `<div class="card"><h2>${esc(s.title)}</h2><ul class="todo-list">${s.items.map(item).join("")}</ul></div>`).join("") + log;
   }
 
