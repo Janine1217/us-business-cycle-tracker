@@ -114,13 +114,17 @@ def t5_reversal(s: Rows, unit: str, p: dict) -> Flags:
     return _turn(s, unit, p, low=False)
 
 
-def t7_pctile(s: Rows, start: str, min_years: int) -> list[tuple[str, float]]:
+def t7_pctile(s: Rows, start: str, min_years: int, min_span: float = 0) -> list[tuple[str, float]]:
     """T7 歷史分位：目前數值在「1985 年（或資料起點）至當期」分布中的百分位（0–100）。
 
     1985 年初樣本太少，至少回看 min_years 年（可用到 1985 年以前的資料，但不會用到未來）。
+    min_span：序列開始後未滿這麼多年，不計算百分位（避免 1992 年 VIX 只有 2.5 年樣本就被算成「極低」）。
     """
     out = []
+    y0, m0 = (int(s[0][0][:4]), int(s[0][0][5:7])) if s else (0, 0)
     for i, (d, v) in enumerate(s):
+        if min_span and (int(d[:4]) - y0) + (int(d[5:7]) - m0) / 12 < min_span:
+            continue
         lo = min(start, f"{int(d[:4]) - min_years:04d}{d[4:]}")
         sample = [x for dd, x in s[:i + 1] if dd >= lo]
         if len(sample) < 24:

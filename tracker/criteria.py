@@ -359,7 +359,8 @@ def threshold_flags(rows: Rows, test, near=None) -> list:
 
 
 def pctile_flags(rows: Rows, q: float, below: bool, P: dict) -> tuple[list, Rows]:
-    pr = tr.t7_pctile(rows, P["settings"]["backtest_start"], P["params"]["pctile_min_years"])
+    pr = tr.t7_pctile(rows, P["settings"]["backtest_start"], P["params"]["pctile_min_years"],
+                      P["params"].get("pctile_min_span", 0))
     out = []
     for d, v in pr:
         met = v <= q if below else v >= q
@@ -490,10 +491,18 @@ def build_criteria(cfg: dict, today: str) -> tuple[list[Crit], dict]:
              [e2a, e2b], combine="any"))
     um = ma3(S("UMCSENT"))
     um_f, um_pr = pctile_flags(um, p["sentiment_pctile"], False, P)
+    # T3「高峰」只看是否接近 24 期高點；另外要求百分位 ≥ sentiment_peak_min_pctile，
+    # 避免從谷底反彈、但仍偏低的信心指數也算「樂觀」（例：1992 年百分位只有 18.6）
+    pk = p.get("sentiment_peak_min_pctile", 0)
+    um_s = tr.smooth(S("UMCSENT"), "M", P["trend"])
+    um_pm = dict(um_pr)
+    um_t3 = [(d, None if met is None else bool(met and um_pm.get(d, -1) >= pk), near)
+             for d, met, near in tr.RULES["T3"](um_s, "pct", P["trend"])]
     add(Crit("E3", "boom_entry", "E3", "市場樂觀情緒高昂", ["15"],
-             f"密西根大學消費者信心指數（3 個月平均）≥ 第 {p['sentiment_pctile']} 百分位，或符合 T3「高峰」",
+             f"密西根大學消費者信心指數（3 個月平均）≥ 第 {p['sentiment_pctile']} 百分位，"
+             f"或符合 T3「高峰」且百分位 ≥ 第 {pk} 百分位",
              [custom("密西根信心指數百分位", f"≥ 第 {p['sentiment_pctile']} 百分位", "M", um_f, um_pr, "", P, lag=0),
-              C("密西根信心指數", S("UMCSENT"), "M", "pct", "T3", lag=0)], combine="any"))
+              custom("密西根信心指數", f"T3 高峰且百分位 ≥ {pk}", "M", um_t3, um_s, "", P, lag=0)], combine="any"))
     rq = p["risk_pctile"]
     risk = []
     for label, rows in (("VIX 百分位", ma3(M("VIXCLS"))), ("Baa 利差百分位", ma3(M("BAA10Y"))),
