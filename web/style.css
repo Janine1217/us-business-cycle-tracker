@@ -87,6 +87,9 @@ main { padding-top: 16px; padding-bottom: 24px; }
 .ind-value { font-size: 22px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
 .ind-value small { font-size: 13px; font-weight: 400; color: var(--ink-2); margin-left: 4px; }
 .ind-sub { display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--ink-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.ind-daily { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--border); display: flex; flex-wrap: wrap; gap: 2px 10px; align-items: baseline; font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.ind-daily b { color: var(--ink); font-size: 15px; }
+.ind-daily small { color: var(--muted); margin-left: 2px; }
 .ind-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 8px; }
 .up::before { content: "▲ "; } .down::before { content: "▼ "; } .flat::before { content: "— "; }
 

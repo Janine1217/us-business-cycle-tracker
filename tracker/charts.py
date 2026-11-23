@@ -34,6 +34,25 @@ def V(name, traces, y_title="", y2_title="", hlines=None, log_ok=False, vlines=N
             "hlines": hlines or [], "log_ok": log_ok, "vlines": vlines or []}
 
 
+RECENT_YEARS = 3  # 日／週資料檢視：只放最近幾年（build_charts 會依 config 的 daily_view_years 改寫）
+
+
+def R(sid: str) -> list:
+    """日／週原始資料，只取最近 RECENT_YEARS 年（避免 data.js 太大）。"""
+    rows = S(sid)
+    if not rows:
+        return []
+    last = rows[-1][0]
+    cut = f"{int(last[:4]) - RECENT_YEARS:04d}{last[4:]}"
+    return [r for r in rows if r[0] >= cut]
+
+
+def DV(traces, y_title="", y2_title="", hlines=None, weekly=False, log_ok=False):
+    """日資料（或週資料）檢視：不取月平均，網頁上可看到短期變化。"""
+    name = f"{'週' if weekly else '日'}資料（近 {RECENT_YEARS} 年）"
+    return V(name, traces, y_title, y2_title, hlines, log_ok) | {"recent": True}
+
+
 def _qend(d: str) -> str:
     """FRED 季資料以季初標日期（2026-04-01＝第 2 季），改標成季末月（2026-06-01）。"""
     y, m = int(d[:4]), int(d[5:7]) + 2
@@ -93,11 +112,13 @@ def market_chart(sp500: list, cfg: dict) -> dict:
         "id": "M", "title": "系統判定景氣 vs 股價指數", "sources": ["SHILLER_SP500", "SP500", "NASDAQCOM", "SOX"],
         "stages_zh": ["額外參考"], "toggle": True, "default_log": True, "no_table": True,
         "notes": ["背景顏色為系統判定的景氣階段，灰色陰影為 NBER 衰退期間；按上方按鈕或圖例可開關各指數",
-                  "皆為月平均；S&P 500 用席勒月資料，最新月份以 FRED SP500 補上",
+                  "「指數」等檢視為月平均，「日資料」為每日收盤；S&P 500 用席勒月資料，最新月份以 FRED SP500 補上",
                   f"標註「空頭」：S&P 500 從前高（月平均）下跌 ≥ {drop:g}% 的起點；月平均會低估日資料的最大跌幅（例如 1987 年股災）",
                   "費半指數來自 Yahoo Finance 非官方介面，1994-05 起；若介面失效只有這條線停止更新"],
         "views": [V("指數", [T("S&P 500", sp500, "點", "pct"), T("那斯達克", nasdaq, "點", "pct"),
                              T("費半", sox, "點", "pct")], "指數", log_ok=True) | {"marks": marks},
+                  DV([T("S&P 500", R("SP500"), "點", "pct"), T("那斯達克", R("NASDAQCOM"), "點", "pct"),
+                      T("費半", R("SOX"), "點", "pct")], "指數（日收盤）", log_ok=True),
                   V("距歷史高點", [T("S&P 500", dd(tf.since(sp500, "1985-01-01")), "%", "pp"),
                                  T("那斯達克", dd(tf.since(nasdaq, "1985-01-01")), "%", "pp"),
                                  T("費半", dd(sox), "%", "pp")], "%", hlines=[{"y": -drop, "label": f"−{drop:g}%"}]),
@@ -107,7 +128,9 @@ def market_chart(sp500: list, cfg: dict) -> dict:
 
 
 def build_charts(cfg: dict) -> list[dict]:
+    global RECENT_YEARS
     p = cfg.get("params", {})
+    RECENT_YEARS = cfg["settings"].get("daily_view_years", RECENT_YEARS)
     core_lo, core_hi = p.get("core_cpi_band", [1.8, 3.0])
     stim = [{"x": s["date"], "label": s["name"]} for s in cfg.get("stimulus", [])]
     yoy = tf.yoy
@@ -141,15 +164,19 @@ def build_charts(cfg: dict) -> list[dict]:
         {"id": "1", "title": "聯邦基金利率", "sources": ["DFEDTARU", "DFEDTAR", "DFF"],
          "notes": ["目標利率：2008-12-15 以前為單一目標 DFEDTAR，之後為目標區間上限 DFEDTARU"],
          "views": [V("利率", [T("目標利率（上限）", fed_target, "%", "pp"),
-                              T("有效利率", M("DFF"), "%", "pp", dash=True)], "%")]},
+                              T("有效利率", M("DFF"), "%", "pp", dash=True)], "%"),
+                   DV([T("目標區間上限", R("DFEDTARU"), "%", "pp"), T("有效利率", R("DFF"), "%", "pp", dash=True)], "%")]},
         {"id": "2", "title": "10 年期公債殖利率", "sources": ["DGS10"],
-         "views": [V("殖利率", [T("10 年期公債殖利率（月平均）", M("DGS10"), "%", "pp")], "%")]},
+         "views": [V("殖利率", [T("10 年期公債殖利率（月平均）", M("DGS10"), "%", "pp")], "%"),
+                   DV([T("10 年期公債殖利率", R("DGS10"), "%", "pp")], "%")]},
         {"id": "3", "title": "30 年房貸平均利率", "sources": ["MORTGAGE30US"],
-         "views": [V("利率", [T("30 年房貸利率（月平均）", M("MORTGAGE30US"), "%", "pp")], "%")]},
+         "views": [V("利率", [T("30 年房貸利率（月平均）", M("MORTGAGE30US"), "%", "pp")], "%"),
+                   DV([T("30 年房貸利率", R("MORTGAGE30US"), "%", "pp")], "%", weekly=True)]},
         {"id": "4a", "title": "油價（WTI）", "sources": ["DCOILWTICO", "WTISPLC"],
          "notes": ["1985 年使用月資料 WTISPLC，1986 年起為日資料 DCOILWTICO 的月平均"],
          "views": [V("價格", [T("WTI 原油", wti, "美元/桶", "pct")], "美元/桶"),
-                   V("年增率", [T("WTI 原油年增率", yoy(wti), "%", "pp")], "%", hlines=[{"y": 0}])]},
+                   V("年增率", [T("WTI 原油年增率", yoy(wti), "%", "pp")], "%", hlines=[{"y": 0}]),
+                   DV([T("WTI 原油", R("DCOILWTICO"), "美元/桶", "pct")], "美元/桶")]},
         {"id": "4b", "title": "原物料價格", "sources": ["PPIACO", "PALLFNFINDEXM"],
          "views": [V("指數", [T("PPI 全部商品", S("PPIACO"), "1982=100", "pct"),
                               T("IMF 全球原物料價格", S("PALLFNFINDEXM"), "2016=100", "pct", axis="y2", dash=True)],
@@ -164,7 +191,9 @@ def build_charts(cfg: dict) -> list[dict]:
                               T("新開職缺", S("JTSJOL"), "千人", "pct", axis="y2")],
                      "初領人數（人）", "新開職缺（千人）", log_ok=True),
                    V("年增率", [T("初領失業救濟金年增率", yoy(S("IC4WSA"), weekly=True), "%", "pp")],
-                     "%", hlines=[{"y": 0}])]},
+                     "%", hlines=[{"y": 0}]),
+                   DV([T("初領失業救濟金（4 週平均）", R("IC4WSA"), "人", "pct"),
+                       T("初領失業救濟金（單週）", R("ICSA"), "人", "pct", dash=True)], "人", weekly=True)]},
         {"id": "6", "title": "短期失業人數（失業 < 5 週）", "sources": ["UEMPLT5"],
          "views": [V("人數", [T("3 個月移動平均", ma3(S("UEMPLT5")), "千人", "pct"),
                               T("原始值", S("UEMPLT5"), "千人", "pct", dash=True)], "千人")]},
@@ -243,7 +272,8 @@ def build_charts(cfg: dict) -> list[dict]:
          "notes": ["垂直線為 config.yaml 登記的政府刺激措施"],
          "views": [V("數值", [T("聯準會總資產", M("WALCL", "last"), "百萬美元", "pct"),
                               T("聯邦政府支出年增率", yoy(S("FGEXPND")), "%", "pp", axis="y2")],
-                     "聯準會總資產（百萬美元）", "聯邦支出年增率（%）", vlines=stim)]},
+                     "聯準會總資產（百萬美元）", "聯邦支出年增率（%）", vlines=stim),
+                   DV([T("聯準會總資產", R("WALCL"), "百萬美元", "pct")], "百萬美元", weekly=True)]},
         {"id": "24", "title": "實質 GDP 年增率與 CFNAI", "sources": ["GDPC1", "CFNAIMA3"],
          "notes": ["CFNAI > 0 代表成長高於長期趨勢"],
          "views": [V("數值", [T("實質 GDP 年增率", yoy(S("GDPC1")), "%", "pp"),
@@ -256,20 +286,28 @@ def build_charts(cfg: dict) -> list[dict]:
                      "S&P 500", "那斯達克", log_ok=True),
                    V("年增率", [T("S&P 500 年增率", yoy(sp500), "%", "pp")], "%",
                      hlines=[{"y": 0}, {"y": 15, "label": "15%"}]),
-                   V("距高點", [T("距歷史高點", tf.drawdown(sp500), "%", "pp")], "%", hlines=[{"y": -5, "label": "−5%"}])]},
+                   V("距高點", [T("距歷史高點", tf.drawdown(sp500), "%", "pp")], "%", hlines=[{"y": -5, "label": "−5%"}]),
+                   DV([T("S&P 500", R("SP500"), "點", "pct"),
+                       T("那斯達克（對照）", R("NASDAQCOM"), "點", "pct", axis="y2", dash=True)], "S&P 500", "那斯達克")]},
         {"id": "26", "title": "席勒本益比（CAPE）", "sources": ["SHILLER_CAPE"],
          "notes": [f"水平線為 1985 年以來第 80 百分位（{cape_p80:.1f} 倍）；回測時改用「當時以前」的資料計算"],
          "views": [V("倍數", [T("CAPE", cape, "倍", "pt")], "倍", hlines=[{"y": round(cape_p80, 2), "label": "第 80 百分位"}])]},
         {"id": "27", "title": "VIX 恐慌指數", "sources": ["VIXCLS"],
-         "views": [V("指數", [T("VIX（月平均）", M("VIXCLS"), "點", "pt")], "點")]},
+         "notes": ["「指數」為月平均（判斷依據 E4 用這個）；「日資料」為每日收盤，可看短期急升"],
+         "views": [V("指數", [T("VIX（月平均）", M("VIXCLS"), "點", "pt")], "點"),
+                   DV([T("VIX（日收盤）", R("VIXCLS"), "點", "pt")], "點", hlines=[{"y": 20, "label": "20"}, {"y": 30, "label": "30"}])]},
         {"id": "28", "title": "信用利差", "sources": ["BAA10Y", "BAMLH0A0HYM2"],
          "notes": ["ICE BofA 高收益債利差在 FRED 只提供最近 3 年，僅作近期對照"],
          "views": [V("利差", [T("Baa 公司債 − 10 年期公債", M("BAA10Y"), "百分點", "pp"),
-                              T("ICE BofA 高收益債利差", M("BAMLH0A0HYM2"), "百分點", "pp", dash=True)], "百分點")]},
+                              T("ICE BofA 高收益債利差", M("BAMLH0A0HYM2"), "百分點", "pp", dash=True)], "百分點"),
+                   DV([T("Baa 公司債 − 10 年期公債", R("BAA10Y"), "百分點", "pp"),
+                       T("ICE BofA 高收益債利差", R("BAMLH0A0HYM2"), "百分點", "pp", dash=True)], "百分點")]},
         {"id": "29", "title": "芝加哥聯準銀行金融情勢指數", "sources": ["NFCIRISK", "NFCI"],
          "notes": ["數值愈低代表金融情勢愈寬鬆、風險意識愈低"],
          "views": [V("指數", [T("風險分項", M("NFCIRISK"), "點", "pt"),
-                              T("總指數", M("NFCI"), "點", "pt", dash=True)], "指數", hlines=[{"y": 0}])]},
+                              T("總指數", M("NFCI"), "點", "pt", dash=True)], "指數", hlines=[{"y": 0}]),
+                   DV([T("風險分項", R("NFCIRISK"), "點", "pt"), T("總指數", R("NFCI"), "點", "pt", dash=True)],
+                      "指數", hlines=[{"y": 0}], weekly=True)]},
         {"id": "30", "title": "巴菲特指標（股市總市值／GNP）", "sources": ["NCBEILQ027S", "GNP", "SP500"],
          "notes": bf_notes,
          "views": [V("比率", [T("巴菲特指標（正式值，季）", bf, "%", "pp"),

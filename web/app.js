@@ -238,6 +238,14 @@
   // ── 指標總表 ───────────────────────────────
   const RULE_ZH = { T1: "下滑", T2: "谷底", T3: "高峰", T4: "落底反彈", T5: "高點反轉", T6: "上揚" };
   const STATE_ZH = { met: "條件成立", near: "接近條件" };
+  function dailyLine(r) {
+    const d = r.daily; if (!d) return "";
+    const diff = d.week_ago == null ? null : r.chg_unit === "%" ? (d.week_ago ? (d.value / d.week_ago - 1) * 100 : null) : d.value - d.week_ago;
+    const dir = diff == null ? "" : diff > 0 ? "up" : diff < 0 ? "down" : "flat";
+    const dtxt = diff == null ? "" : `<span class="${dir}">比一週前 ${diff > 0 ? "+" : ""}${fmt(diff)} ${r.chg_unit === "%" ? "%" : r.chg_unit}</span>`;
+    return `<div class="ind-daily"><span class="small muted">最新${esc(d.freq)}資料（${esc(d.date)}）：</span><b>${fmt(d.value)}</b><small>${esc(r.unit)}</small>
+      ${dtxt}<span class="small muted">近 3 個月 ${fmt(d.lo)}–${fmt(d.hi)}</span></div>`;
+  }
   function renderTable(stage) {
     const rows = D.table.filter((r) => stage === "全部" || r.stages.includes(stage));
     $("#indicator-list").innerHTML = rows.map((r) => {
@@ -252,6 +260,7 @@
         <div class="ind-metric">${esc(r.metric)}</div>
         <div class="ind-value">${fmt(r.value)}<small>${esc(r.unit)}</small></div>
         <div class="ind-sub"><span class="${dir}">變化 ${chg}</span><span>前值 ${fmt(r.prev)}</span><span>資料期間 ${esc(r.date.slice(0, 7))}</span></div>
+        ${dailyLine(r)}
         ${trLine}
         <div class="ind-tags">${r.stages.map((s) => `<span class="badge stage">${esc(s)}</span>`).join("")}${fail}</div>
       </article>`;
@@ -277,7 +286,7 @@
   });
 
   // ── 趨勢圖 ─────────────────────────────────
-  const RANGES = [["1 年", 1], ["5 年", 5], ["10 年", 10], ["1985 至今", 0]];
+  const RANGES = [["3 個月", 0.25], ["1 年", 1], ["5 年", 5], ["10 年", 10], ["1985 至今", 0]];
   const list = $("#chart-list");
   list.innerHTML = D.charts.map((c) => {
     const views = c.views.length > 1
@@ -320,7 +329,11 @@
     const colors = [css("--s1"), css("--s2"), css("--s3"), css("--s4")];
     const lastX = v.traces.reduce((m, t) => (t.x[t.x.length - 1] > m ? t.x[t.x.length - 1] : m), "");
     let x0 = D.start;
-    if (st.years) { const d = new Date(lastX); d.setFullYear(d.getFullYear() - st.years); x0 = d.toISOString().slice(0, 10); }
+    if (st.years) { const d = new Date(lastX); d.setMonth(d.getMonth() - Math.round(st.years * 12)); x0 = d.toISOString().slice(0, 10); }
+    if (v.recent) { // 日／週資料只放最近幾年：起點不早於資料起點
+      const first = v.traces.reduce((m, t) => (t.x.length && t.x[0] < m ? t.x[0] : m), lastX);
+      if (x0 < first) x0 = first;
+    }
     const log = st.log && v.log_ok;
     const hasY2 = v.traces.some((t) => t.axis === "y2");
 

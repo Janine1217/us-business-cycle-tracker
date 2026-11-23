@@ -29,6 +29,11 @@ def _round(v: float) -> float:
     return round(v, 4 if a < 10 else 2 if a < 10000 else 0)
 
 
+def _shift_days(d: str, n: int) -> str:
+    import datetime as _dt
+    return (_dt.date.fromisoformat(d[:10]) + _dt.timedelta(days=n)).isoformat()
+
+
 def _recessions(start: str) -> list[list[str]]:
     out, cur = [], None
     for d, v in store.read_series("USREC"):
@@ -110,13 +115,14 @@ def run_build(record: bool = True) -> dict:
                 data = [(d, y) for d, y in t["data"] if d >= start]
                 if not data:
                     continue
-                if data[0][0] > f"{start[:4]}-12-31" and "估計" not in t["name"]:
+                if data[0][0] > f"{start[:4]}-12-31" and "估計" not in t["name"] and not v.get("recent"):
                     msg = f"{t['name']}：本資料自 {data[0][0][:4]} 年起提供"
                     if not any(n.startswith(t["name"] + "：") for n in notes):
                         notes.append(msg)
                 traces.append({"name": t["name"], "unit": t["unit"], "axis": t["axis"], "dash": t["dash"],
                                "x": [d for d, _ in data], "y": [_round(y) for _, y in data]})
             views.append({k: v[k] for k in ("name", "y_title", "y2_title", "hlines", "vlines", "log_ok")}
+                         | {"recent": bool(v.get("recent"))}
                          | {"traces": traces, "marks": [{"x": m["x"], "y": _round(m["y"]), "text": m["text"]}
                                                         for m in v.get("marks", []) if m["x"] >= start]})
         # 特殊型態標註（畫在第一個檢視）
@@ -146,12 +152,25 @@ def run_build(record: bool = True) -> dict:
                 chg = (last[1] - prev[1]) if head["chg"] in ("pp", "pt") else \
                       ((last[1] / prev[1] - 1) * 100 if prev[1] else None)
             failed = [s for s in sources if s["failed"]]
+            # 有日／週資料檢視的指標：另外附上最新一筆與約一週前的數值（月平均看不到短期變化）
+            daily = None
+            dv = next((v for v in ch["views"] if v.get("recent") and v["traces"] and v["traces"][0]["data"]), None)
+            if dv:
+                dd = dv["traces"][0]["data"]
+                ld = dd[-1][0]
+                wk = [r for r in dd if r[0] <= _shift_days(ld, -7)]
+                daily = {"name": dv["traces"][0]["name"], "freq": "週" if dv["name"].startswith("週") else "日",
+                         "value": _round(dd[-1][1]), "date": ld,
+                         "week_ago": _round(wk[-1][1]) if wk else None, "week_ago_date": wk[-1][0] if wk else None,
+                         "hi": _round(max(y for d, y in dd if d >= _shift_days(ld, -91))),
+                         "lo": _round(min(y for d, y in dd if d >= _shift_days(ld, -91)))}
             table.append({"id": ch["id"], "name": ch["title"], "metric": head["name"], "stages": stages,
                           "value": _round(last[1]), "unit": head["unit"], "date": last[0],
                           "prev": _round(prev[1]) if prev else None, "prev_date": prev[0] if prev else None,
                           "chg": _round(chg) if chg is not None else None,
                           "chg_unit": {"pp": "百分點", "pt": "點", "pct": "%"}[head["chg"]],
                           "failed": [{"id": s["id"], "last_success": s["last_success"]} for s in failed],
+                          "daily": daily,
                           "trend": trends.get(ch["id"]), "state": ind_state.get(ch["id"])})
 
     payload = {

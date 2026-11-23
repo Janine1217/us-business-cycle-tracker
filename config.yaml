@@ -5,6 +5,7 @@
 settings:
   observation_start: "1975-01-01"   # 抓資料起點（比回測早 10 年，供 24 個月回看與年增率計算）
   backtest_start: "1985-01-01"      # 回測與繪圖起點
+  daily_view_years: 3               # 趨勢圖「日資料／週資料」檢視放最近幾年（只影響畫面，不影響階段判定）
   utc_offset_hours: 8               # 台灣時間
   run_time: "08:00"                 # 每日執行時間（台灣時間），實際排程寫在 .github/workflows/daily.yml
   failure_alert_after_runs: 2       # 整個排程連續失敗幾次就寄系統異常通知
